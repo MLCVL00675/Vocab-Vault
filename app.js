@@ -1307,10 +1307,11 @@
   let workingGeminiEndpoint = localStorage.getItem(GEMINI_MODEL_STORAGE) || '';
 
   const GEMINI_CANDIDATE_ENDPOINTS = [
-    'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent',
     'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
+    'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent',
     'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent',
     'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent',
+    'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent',
     'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent',
     'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent',
     'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent'
@@ -1403,6 +1404,10 @@ Return ONLY a valid JSON object matching this schema:
         } else {
           const errorData = await res.json().catch(() => ({}));
           lastErrMsg = errorData.error?.message || `HTTP ${res.status}`;
+          if (res.status === 404 && endpoint === workingGeminiEndpoint) {
+            workingGeminiEndpoint = '';
+            localStorage.removeItem(GEMINI_MODEL_STORAGE);
+          }
           if (res.status === 400 || res.status === 403 || res.status === 401) {
             if (lastErrMsg.toLowerCase().includes('key') || lastErrMsg.toLowerCase().includes('credential')) {
               showToast('⚠️ Invalid Gemini API Key. Please check your key in Settings (⚙️).', 'error');
