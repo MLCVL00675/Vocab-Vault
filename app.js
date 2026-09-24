@@ -261,7 +261,6 @@
   const triggerAiAutoFillBtn = document.getElementById('triggerAiAutoFillBtn');
   const aiInlineSpinner = document.getElementById('aiInlineSpinner');
   const geminiApiKeyInput = document.getElementById('geminiApiKeyInput');
-  const openAiSettingsPillBtn = document.getElementById('openAiSettingsPillBtn');
 
   // Settings DOM
   const masteryThresholdSelect = document.getElementById('masteryThresholdSelect');
@@ -2169,12 +2168,6 @@ Return ONLY a valid JSON object matching this schema:
     // Settings & Theme
     if (themeToggleBtn) themeToggleBtn.addEventListener('click', toggleTheme);
     if (settingsBtn) settingsBtn.addEventListener('click', openSettingsModal);
-    if (openAiSettingsPillBtn) {
-      openAiSettingsPillBtn.addEventListener('click', () => {
-        openSettingsModal();
-        if (geminiApiKeyInput) setTimeout(() => geminiApiKeyInput.focus(), 250);
-      });
-    }
     if (closeSettingsBtn) closeSettingsBtn.addEventListener('click', closeSettingsModal);
     if (settingsModalBackdrop) {
       settingsModalBackdrop.addEventListener('click', (e) => {
