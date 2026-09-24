@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VocabVault — English Vocabulary & Recall Tracker</title>
+  <meta name="description" content="Personal English vocabulary learning website with date-based tracking, calendar and date range filtering, spaced repetition tick/cross threshold recall, and multi-session storage.">
+  
+  <!-- Favicon / App Icon -->
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="alternate icon" href="favicon.svg">
+  <link rel="apple-touch-icon" href="favicon.svg">
+  <meta name="theme-color" content="#4f46e5">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Ambient background glow effects -->
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+
+  <!-- Header -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="brand">
+        <div class="logo-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-0.5-.05"></path>
+            <path d="M6 6h10"></path>
+            <path d="M6 10h10"></path>
+            <path d="M6 14h6"></path>
+            <path d="m18 13 3 3-3 3"></path>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1>Vocab<span>Vault</span></h1>
+          <p class="brand-tagline">Active Recall Vocabulary Trainer</p>
+        </div>
+      </div>
+
+      <!-- Quick Stats Pill -->
+      <div class="header-stats-pill">
+        <div class="stat-bubble" title="Total words in your vault">
+          <span class="stat-num" id="totalCountBadge">0</span>
+          <span class="stat-txt">Total Words</span>
+        </div>
+        <div class="stat-bubble" title="Words you have mastered">
+          <span class="stat-num text-emerald" id="masteredCountBadge">0</span>
+          <span class="stat-txt">Mastered</span>
+        </div>
+        <div class="stat-bubble" title="Words currently being learned">
+          <span class="stat-num text-amber" id="learningCountBadge">0</span>
+          <span class="stat-txt">Learning</span>
+        </div>
+        <div class="stat-bubble" title="Words added today">
+          <span class="stat-num text-blue" id="todayCountBadge">0</span>
+          <span class="stat-txt">Today</span>
+        </div>
+      </div>
+
+      <!-- Right Header Actions -->
+      <div class="header-actions">
+        <button id="openFlashcardModalBtn" class="btn btn-secondary" title="Practice Active Recall with Flashcards">
+          <span>Practice Flashcards</span>
+        </button>
+
+        <button id="addWordBtn" class="btn btn-primary" title="Add a new English word">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          <span>Add Word</span>
+        </button>
+
+        <button id="themeToggleBtn" class="btn-icon" title="Toggle Dark / Light Theme" aria-label="Toggle theme">
+          <svg class="sun-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="4"></circle>
+            <path d="M12 2v2"></path>
+            <path d="M12 20v2"></path>
+            <path d="m4.93 4.93 1.41 1.41"></path>
+            <path d="m17.66 17.66 1.41 1.41"></path>
+            <path d="M2 12h2"></path>
+            <path d="M20 12h2"></path>
+            <path d="m6.34 17.66-1.41 1.41"></path>
+            <path d="m19.07 4.93-1.41 1.41"></path>
+          </svg>
+          <svg class="moon-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
+          </svg>
+        </button>
+
+        <button id="settingsBtn" class="btn-icon" title="Settings & Backup" aria-label="Settings and Backup">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main App Layout: Calendar Sidebar + Main List Content -->
+  <main class="app-dashboard">
+    
+    <!-- LEFT SIDEBAR: Interactive Calendar & Range Filter -->
+    <aside class="calendar-sidebar">
+      <div class="calendar-card">
+        
+        <!-- Calendar Header -->
+        <div class="cal-header">
+          <div class="cal-title-wrap">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            <h3 id="calMonthYearTitle">September 2026</h3>
+          </div>
+
+          <div class="cal-nav-buttons">
+            <button id="calPrevMonthBtn" class="cal-nav-btn" title="Previous Month" aria-label="Previous Month">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="15 18 9 12 15 6"></polyline>
+              </svg>
+            </button>
+            <button id="calNextMonthBtn" class="cal-nav-btn" title="Next Month" aria-label="Next Month">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Days of Week Header -->
+        <div class="cal-weekdays">
+          <span>Su</span>
+          <span>Mo</span>
+          <span>Tu</span>
+          <span>We</span>
+          <span>Th</span>
+          <span>Fr</span>
+          <span>Sa</span>
+        </div>
+
+        <!-- Dynamic Calendar Grid of Days -->
+        <div class="cal-days-grid" id="calDaysGrid">
+          <!-- Populated by JavaScript -->
+        </div>
+
+        <!-- Sleek Segmented Date Range Filters -->
+        <div class="cal-shortcuts-section">
+          <div class="cal-shortcuts-pills">
+            <button id="calFilterAllBtn" class="cal-quick-pill active">All</button>
+            <button id="calFilterTodayBtn" class="cal-quick-pill">Today</button>
+            <button id="calFilterLast7Btn" class="cal-quick-pill">7 Days</button>
+            <button id="calFilterLast30Btn" class="cal-quick-pill">30 Days</button>
+            <button id="calFilterThisMonthBtn" class="cal-quick-pill">Month</button>
+          </div>
+        </div>
+
+        <!-- Custom Date Range Picker Accordion -->
+        <div class="custom-range-box">
+          <div class="range-header-toggle" id="toggleRangePickerBtn">
+            <div class="range-toggle-left">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+              </svg>
+              <span>Custom Date Range</span>
+            </div>
+            <svg class="range-chevron" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </div>
+          
+          <div class="range-inputs-container" id="rangeInputsContainer" style="display: none;">
+            <div class="range-field">
+              <label for="rangeStartDate">From:</label>
+              <input type="date" id="rangeStartDate">
+            </div>
+            <div class="range-field">
+              <label for="rangeEndDate">To:</label>
+              <input type="date" id="rangeEndDate">
+            </div>
+            <div class="range-btn-row">
+              <button id="applyRangeBtn" class="btn btn-primary btn-sm btn-block">Apply</button>
+              <button id="clearRangeBtn" class="btn btn-ghost btn-sm">Clear</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="cal-legend">
+          <span class="legend-dot has-words"></span>
+          <span>Dots mark days with saved words</span>
+        </div>
+      </div>
+
+      <!-- Compact Mastery Streak Info -->
+      <div class="compact-threshold-tip">
+        <span class="tip-icon">💡</span>
+        <span>Goal: Reach <strong id="thresholdDisplayNum">5 times</strong> to shift to 🟢 Mastered</span>
+      </div>
+    </aside>
+
+    <!-- RIGHT MAIN CONTENT: Vocabulary List Grouped by Date -->
+    <section class="list-content-area">
+      
+      <!-- AI Instant Quick-Add Bar -->
+      <div class="ai-quick-add-card">
+        <div class="ai-quick-add-header">
+          <div class="ai-badge-glow">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/>
+            </svg>
+            <span>AI One-Step Auto-Add</span>
+          </div>
+          <span class="ai-quick-tagline">Just enter the word — AI automatically fetches meaning, example sentence & synonyms!</span>
+        </div>
+        <form id="aiQuickAddForm" class="ai-quick-add-form">
+          <div class="ai-input-wrap">
+            <svg class="ai-sparkle-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/>
+            </svg>
+            <input type="text" id="aiQuickWordInput" placeholder="Enter any English word (e.g. Ineffable, Mellifluous, Ephemeral)..." autocomplete="off" required>
+          </div>
+          <button type="submit" id="aiQuickAddBtn" class="btn btn-ai-sparkle">
+            <span class="ai-btn-text">✨ Auto-Add with AI</span>
+            <span class="ai-btn-spinner" style="display: none;">
+              <svg class="spinner-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" stroke-dasharray="32" stroke-dashoffset="12"/></svg>
+              Thinking...
+            </span>
+          </button>
+        </form>
+      </div>
+
+      <!-- Controls / Filter / Search Toolbar -->
+      <div class="control-panel">
+        <div class="search-wrapper">
+          <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" id="searchInput" placeholder="Search word, meaning, or sentence..." autocomplete="off">
+          <button id="clearSearchBtn" class="clear-search-btn" title="Clear search" style="display: none;">&times;</button>
+        </div>
+
+        <div class="filter-pills">
+          <button class="filter-pill active" data-filter="all">All Words</button>
+          <button class="filter-pill" data-filter="learning">
+            <span class="pill-dot amber"></span>
+            Learning
+          </button>
+          <button class="filter-pill" data-filter="mastered">
+            <span class="pill-dot emerald"></span>
+            Mastered
+          </button>
+        </div>
+
+        <div class="view-actions">
+          <button id="toggleAllRevealBtn" class="btn btn-ghost btn-sm" title="Reveal or hide all meanings on page">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+            <span id="toggleAllRevealText">Reveal All</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Active Filter Banner -->
+      <div class="active-filter-banner" id="activeFilterBanner" style="display: none;">
+        <div class="banner-text">
+          <span>📅 Filtered by: <strong id="filterBannerDateText">Today</strong></span>
+          <span class="banner-badge" id="filterBannerCountBadge">4 words</span>
+        </div>
+        <button id="clearCalendarFilterBtn" class="btn-clear-filter">Show All Dates ✕</button>
+      </div>
+
+      <!-- Date Grouped Words Feed (List with Date) -->
+      <div class="feed-section" id="feedSection">
+        <!-- Injected by JavaScript -->
+      </div>
+
+      <!-- Empty State -->
+      <div id="emptyState" class="empty-state" style="display: none;">
+        <div class="empty-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+          </svg>
+        </div>
+        <h2 class="empty-title">No words found for this filter</h2>
+        <p class="empty-desc" id="emptyMessage">Try choosing a different date or range from the calendar, or add a new word.</p>
+        <button id="emptyAddBtn" class="btn btn-primary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          Add Word to Vault
+        </button>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- Flashcard Practice Modal (With Active Recall & Tick/Cross Grading) -->
+  <div class="modal-backdrop" id="flashcardModalBackdrop" aria-hidden="true">
+    <div class="modal-card flashcard-modal-container" role="dialog" aria-labelledby="fcModalTitle">
+      <div class="modal-header">
+        <div class="fc-modal-header-left">
+          <h2 id="fcModalTitle">Active Recall Practice</h2>
+          <span class="fc-modal-date-chip" id="fcModalDateChip">All Dates</span>
+        </div>
+        <button class="modal-close-btn" id="closeFlashcardModalBtn" aria-label="Close flashcards">&times;</button>
+      </div>
+
+      <!-- Practice Controls Toolbar (Modes, Dates, Threshold) -->
+      <div class="fc-modal-toolbar">
+        <div class="fc-filter-group">
+          <label for="fcPracticeModeSelect">Recall Mode:</label>
+          <select id="fcPracticeModeSelect" class="fc-select-sm">
+            <option value="word-to-meaning">🔤 Word ➔ Recall Meaning</option>
+            <option value="meaning-to-word">🧠 Meaning ➔ Recall Word</option>
+          </select>
+        </div>
+
+        <div class="fc-filter-group">
+          <label for="fcPracticeDateSelect">Dates:</label>
+          <select id="fcPracticeDateSelect" class="fc-select-sm">
+            <option value="all">🌟 All Dates</option>
+            <option value="today">📅 Today's Words</option>
+            <option value="yesterday">📅 Yesterday's Words</option>
+            <option value="last7">⚡ Last 7 Days</option>
+            <option value="last14">⚡ Last 14 Days</option>
+            <option value="last30">⚡ Last 30 Days</option>
+            <option value="thisMonth">🗓️ This Month</option>
+            <option value="custom">🛠️ Custom Range...</option>
+          </select>
+        </div>
+
+        <div class="fc-filter-group" id="fcCustomRangeWrap" style="display: none;">
+          <input type="date" id="fcCustomStart" class="fc-date-input-sm">
+          <span>to</span>
+          <input type="date" id="fcCustomEnd" class="fc-date-input-sm">
+          <button id="fcApplyCustomRangeBtn" class="btn btn-primary btn-sm">Filter</button>
+        </div>
+
+        <div class="fc-filter-group">
+          <label for="fcPracticeStatusSelect">Status:</label>
+          <select id="fcPracticeStatusSelect" class="fc-select-sm">
+            <option value="all">All Words</option>
+            <option value="learning">Learning Only</option>
+            <option value="mastered">Mastered Only</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Stacked Card Deck Stage -->
+      <div class="flashcard-deck-stage" id="flashcardDeckStage">
+        
+        <!-- Mastery Streak Progress Header above the card -->
+        <div class="card-streak-meter-wrap">
+          <div class="streak-indicator">
+            <span class="streak-text">Mastery Streak:</span>
+            <div class="streak-pips" id="fcStreakPips">
+              <span class="pip"></span>
+              <span class="pip"></span>
+              <span class="pip"></span>
+            </div>
+            <span class="streak-badge" id="fcStreakScoreBadge">0/3</span>
+          </div>
+          <span class="card-status-pill-small" id="fcCardStatusPill">Learning</span>
+        </div>
+
+        <div class="deck-container">
+          <div class="deck-card-layer layer-back-3"></div>
+          <div class="deck-card-layer layer-back-2"></div>
+          <div class="deck-card-layer layer-back-1"></div>
+
+          <!-- Main Interactive Card -->
+          <div class="deck-card-main" id="mainDeckCard" tabindex="0" role="button" aria-label="Flashcard - Click or space to flip">
+            <div class="card-flipper" id="cardFlipper">
+              
+              <!-- Front Side (Prompt) -->
+              <div class="card-face card-front">
+                <div class="card-front-center">
+                  <!-- In Word Mode: Shows word; In Reverse Mode: Shows definition prompt -->
+                  <h3 class="fc-main-word" id="fcMainWord">acquiesce</h3>
+                  <div class="fc-reverse-prompt" id="fcReversePrompt" style="display: none;"></div>
+                  
+                  <div class="pronunciation-group" id="fcPronunciationGroup">
+                    <button class="pronounce-btn" id="fcSpeakUsBtn" title="Play US Pronunciation">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                        <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                      </svg>
+                      <span>🇺🇸 US</span>
+                    </button>
+                    <button class="pronounce-btn" id="fcSpeakUkBtn" title="Play UK Pronunciation">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                        <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                      </svg>
+                      <span>🇬🇧 UK</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="card-bottom-hint">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                  <span>Click anywhere or spacebar to reveal Answer</span>
+                </div>
+              </div>
+
+              <!-- Back Side (Answer Revealed) -->
+              <div class="card-face card-back">
+                <div class="card-back-center-content">
+                  <div class="fc-back-answer-title" id="fcBackAnswerTitle" style="display: none;"></div>
+                  
+                  <div class="fc-definition-line">
+                    <span class="fc-pos-prefix" id="fcBackPosAbbr">v.</span>
+                    <span class="fc-definition-text" id="fcBackMeaning">to accept something reluctantly but without protest</span>
+                  </div>
+
+                  <div class="fc-sentence-line" id="fcBackSentenceWrap">
+                    <span class="fc-sentence-text" id="fcBackSentence">"Sara decided to acquiesce in her manager's decision to avoid further conflict."</span>
+                  </div>
+
+                  <div class="fc-notes-line" id="fcBackNotesWrapper" style="display: none;">
+                    <span class="fc-notes-text" id="fcBackNotes"></span>
+                  </div>
+                </div>
+
+                <div class="card-bottom-hint">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
+                    <path d="M21 3v5h-5"></path>
+                  </svg>
+                  <span>Click to flip back</span>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- RECALL GRADING TOOLBAR: Tick ✅ & Cross ❌ System with Auto-Advance -->
+        <div class="recall-grading-bar">
+          <button id="fcGradeWrongBtn" class="btn-grade btn-grade-wrong" title="Forgot / Need more review (Press 1 or X)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+            <span>Forgot ✕</span>
+            <kbd>1</kbd>
+          </button>
+
+          <div class="deck-counter-indicator">
+            <span id="fcCurrentIndex">1</span>/<span id="fcTotalCount">7</span>
+          </div>
+
+          <button id="fcGradeRightBtn" class="btn-grade btn-grade-right" title="Remembered correctly (+1 Streak) (Press 2 or Enter)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            <span>Remembered ✓</span>
+            <kbd>2</kbd>
+          </button>
+        </div>
+
+        <!-- Secondary Navigation Controls -->
+        <div class="deck-controls-toolbar secondary">
+          <button id="fcPrevBtn" class="deck-nav-btn-subtle" title="Previous Word">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            Prev
+          </button>
+
+          <button id="fcShuffleBtn" class="btn-shuffle" title="Shuffle flashcards">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H22"></path><path d="m18 2 4 4-4 4"></path><path d="M2 6h1.9c1.5 0 2.9.9 3.6 2.2"></path><path d="M22 18h-5.9c-1.3 0-2.5-.7-3.3-1.8l-.5-.8"></path><path d="m18 14 4 4-4 4"></path></svg>
+          </button>
+
+          <button id="fcNextBtn" class="deck-nav-btn-subtle" title="Next Word">
+            Next
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Add / Edit Word Modal -->
+  <div class="modal-backdrop" id="wordModalBackdrop" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-labelledby="modalTitle">
+      <div class="modal-header">
+        <h2 id="modalTitle">Add New Word</h2>
+        <button class="modal-close-btn" id="closeModalBtn" aria-label="Close modal">&times;</button>
+      </div>
+
+      <!-- AI Assistant Callout Banner in Modal -->
+      <div class="modal-ai-banner">
+        <div class="ai-banner-icon">✨</div>
+        <div class="ai-banner-text">
+          <strong>Smart AI Auto-Fill Active:</strong> Just enter the word and click <em>"Auto-Fill with AI"</em> (or press Enter/Tab). We'll handle meaning, part of speech, sentence, and synonyms!
+        </div>
+      </div>
+
+      <form id="wordForm">
+        <input type="hidden" id="editWordId">
+        
+        <div class="form-row">
+          <div class="form-group flex-2">
+            <div class="label-with-helper">
+              <label for="wordInput">Word / Expression <span class="required">*</span></label>
+              <button type="button" id="triggerAiAutoFillBtn" class="btn-ai-inline" title="Auto-fill meaning, sentence & part of speech with AI">
+                <span>✨ Auto-Fill with AI</span>
+              </button>
+            </div>
+            <div class="input-with-action">
+              <input type="text" id="wordInput" placeholder="e.g. Acquiesce, Aberration, Ephemeral" required autocomplete="off">
+              <span id="aiInlineSpinner" class="input-spinner" style="display: none;" title="AI fetching definition...">
+                <svg class="spinner-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" stroke-dasharray="32" stroke-dashoffset="12"/></svg>
+              </span>
+            </div>
+          </div>
+          <div class="form-group flex-1">
+            <label for="posSelect">Part of Speech</label>
+            <select id="posSelect">
+              <option value="Noun">Noun (n.)</option>
+              <option value="Verb">Verb (v.)</option>
+              <option value="Adjective">Adjective (adj.)</option>
+              <option value="Adverb">Adverb (adv.)</option>
+              <option value="Idiom">Idiom</option>
+              <option value="Phrasal Verb">Phrasal Verb</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="dateInput">Date of Entry <span class="required">*</span></label>
+            <input type="date" id="dateInput" required>
+          </div>
+          <div class="form-group flex-1">
+            <label for="statusSelect">Learning Status</label>
+            <select id="statusSelect">
+              <option value="learning">🟡 Learning (0/3 Ticks)</option>
+              <option value="mastered">🟢 Mastered (3/3 Ticks)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <div class="label-with-helper">
+            <label for="meaningInput">Meaning / Definition <span class="required">*</span></label>
+            <span class="helper-text">(Auto-filled by AI)</span>
+          </div>
+          <textarea id="meaningInput" rows="2" placeholder="e.g. A state or condition markedly different from the norm." required></textarea>
+        </div>
+
+        <div class="form-group">
+          <div class="label-with-helper">
+            <label for="sentenceInput">Example Sentence <span class="required">*</span></label>
+            <span class="helper-text">(Auto-filled by AI)</span>
+          </div>
+          <textarea id="sentenceInput" rows="3" placeholder="e.g. Her angry outburst was an aberration from her usual calm demeanor." required></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="notesInput">Additional Notes / Synonyms <span class="optional">(Auto-filled)</span></label>
+          <input type="text" id="notesInput" placeholder="e.g. Synonyms: anomaly, deviation, divergence">
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" id="cancelModalBtn">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="saveWordBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+              <polyline points="17 21 17 13 7 13 7 21"></polyline>
+              <polyline points="7 3 7 8 15 8"></polyline>
+            </svg>
+            Save Word
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Settings & Backup Modal -->
+  <div class="modal-backdrop" id="settingsModalBackdrop" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-labelledby="settingsTitle">
+      <div class="modal-header">
+        <h2 id="settingsTitle">Settings & Backup</h2>
+        <button class="modal-close-btn" id="closeSettingsBtn" aria-label="Close modal">&times;</button>
+      </div>
+      <div class="settings-content">
+        
+        <!-- Threshold Config -->
+        <div class="setting-card threshold-config-card">
+          <h4>Mastery Streak Threshold</h4>
+          <p>How many consecutive correct ticks (✓) are needed to shift a word from <strong>Learning</strong> to <strong>Mastered</strong>?</p>
+          <div class="threshold-input-row">
+            <select id="masteryThresholdSelect" class="fc-select-sm">
+              <option value="2">2 Times (Quick)</option>
+              <option value="3">3 Times (Fast)</option>
+              <option value="4">4 Times (Solid)</option>
+              <option value="5" selected>5 Times (Recommended)</option>
+              <option value="7">7 Times (Deep Mastery)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- AI Engine Configuration Card -->
+        <div class="setting-card">
+          <div class="ai-config-title-row">
+            <span class="ai-sparkle-emoji">✨</span>
+            <h4>AI & Smart Dictionary Engine</h4>
+          </div>
+          <p>The app automatically fetches dictionary definitions, sentences, and synonyms via multi-tiered intelligent linguistic APIs.</p>
+          <div class="api-key-field">
+            <label for="geminiApiKeyInput">Optional: Google Gemini API Key <span class="optional">(For custom generative AI sentences)</span></label>
+            <input type="password" id="geminiApiKeyInput" placeholder="AIzaSy..." autocomplete="off">
+            <span class="helper-text-subtle">Leave blank to use built-in Free Smart Dictionary & Linguistic AI engine without any key!</span>
+          </div>
+        </div>
+
+        <div class="settings-actions-grid">
+          <div class="setting-card">
+            <h4>Export Data</h4>
+            <p>Download all your words as a JSON backup file.</p>
+            <button class="btn btn-secondary btn-block" id="exportDataBtn">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              Export JSON File
+            </button>
+          </div>
+
+          <div class="setting-card">
+            <h4>Import Data</h4>
+            <p>Restore words from a previously saved JSON backup.</p>
+            <input type="file" id="importFileInput" accept=".json" style="display: none;">
+            <button class="btn btn-secondary btn-block" id="importDataBtn">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+              Import JSON File
+            </button>
+          </div>
+        </div>
+
+        <div class="danger-zone">
+          <h4>Sample Data & Reset</h4>
+          <div class="danger-buttons">
+            <button class="btn btn-ghost btn-sm" id="loadSampleDataBtn">Load Sample Words</button>
+            <button class="btn btn-danger btn-sm" id="clearAllDataBtn">Clear All Words</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom Sleek Confirmation Dialog Modal (Replaces browser confirm popup) -->
+  <div class="modal-backdrop confirm-modal-backdrop" id="confirmModalBackdrop" aria-hidden="true">
+    <div class="modal-card confirm-modal-card" role="alertdialog" aria-labelledby="confirmModalTitle" aria-describedby="confirmModalDesc">
+      <div class="confirm-icon-wrap" id="confirmModalIcon">
+        <svg class="confirm-danger-icon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+      </div>
+      <h3 class="confirm-title" id="confirmModalTitle">Delete Word?</h3>
+      <p class="confirm-desc" id="confirmModalDesc">Are you sure you want to delete this word from your vocabulary vault?</p>
+      <div class="confirm-actions">
+        <button type="button" class="btn btn-ghost" id="confirmModalCancelBtn">Cancel</button>
+        <button type="button" class="btn btn-danger" id="confirmModalActionBtn">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Main JavaScript Logic -->
+  <script src="app.js"></script>
+</body>
+</html>
