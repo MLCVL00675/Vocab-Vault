@@ -1281,9 +1281,15 @@
     } catch (e) {}
   }
 
-  async function fetchWithTimeout(url, options = {}, timeoutMs = 4000) {
+  async function fetchWithTimeout(url, options = {}, timeoutMs = 8500) {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const timer = setTimeout(() => {
+      try {
+        controller.abort(new Error('Timeout'));
+      } catch (e) {
+        controller.abort();
+      }
+    }, timeoutMs);
     try {
       const response = await fetch(url, { ...options, signal: controller.signal });
       clearTimeout(timer);
@@ -1443,7 +1449,7 @@ Return ONLY a valid JSON object matching this schema:
               maxOutputTokens: 300
             }
           })
-        }, 4500);
+        }, 8500);
 
         if (res.ok) {
           const data = await res.json();
@@ -1489,7 +1495,11 @@ Return ONLY a valid JSON object matching this schema:
           }
         }
       } catch (err) {
-        lastErrMsg = err.message;
+        if (err.name === 'AbortError' || (err.message && err.message.toLowerCase().includes('abort'))) {
+          lastErrMsg = 'Request timed out. Please try again.';
+        } else {
+          lastErrMsg = err.message || 'Network error';
+        }
       }
     }
 
