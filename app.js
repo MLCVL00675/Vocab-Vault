@@ -1306,16 +1306,65 @@
   const GEMINI_MODEL_STORAGE = 'vocabvault_working_gemini_endpoint';
   let workingGeminiEndpoint = localStorage.getItem(GEMINI_MODEL_STORAGE) || '';
 
-  const GEMINI_CANDIDATE_ENDPOINTS = [
-    'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
-    'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent',
-    'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent',
-    'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent',
-    'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent',
-    'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent',
-    'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent',
-    'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent'
-  ];
+  function parseAiJsonResponse(rawText) {
+    if (!rawText) return null;
+    const cleaned = cleanJsonText(rawText);
+    try {
+      return JSON.parse(cleaned);
+    } catch (e) {}
+
+    // Extract first JSON object match
+    const jsonMatch = rawText.match(/\{[\s\S]*?\}/);
+    if (jsonMatch) {
+      try {
+        return JSON.parse(jsonMatch[0]);
+      } catch (e) {}
+    }
+    return null;
+  }
+
+  async function resolveGeminiEndpoint(apiKey) {
+    if (workingGeminiEndpoint) return workingGeminiEndpoint;
+
+    // 1. Query Google's ModelService ListModels API to discover exact available models
+    try {
+      const listRes = await fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`, {
+        method: 'GET'
+      }, 3500);
+
+      if (listRes.ok) {
+        const listData = await listRes.json();
+        const models = (listData.models || []).filter((m) => {
+          const methods = m.supportedGenerationMethods || [];
+          return methods.includes('generateContent') || methods.includes('generate_content');
+        });
+
+        if (models.length > 0) {
+          // Priority ranking for speed and quality
+          const chosen = models.find((m) => m.name.includes('gemini-2.0-flash') && !m.name.includes('lite') && !m.name.includes('exp'))
+                      || models.find((m) => m.name.includes('gemini-1.5-flash') && !m.name.includes('8b'))
+                      || models.find((m) => m.name.includes('gemini-2.0'))
+                      || models.find((m) => m.name.includes('gemini-1.5'))
+                      || models.find((m) => m.name.includes('flash'))
+                      || models[0];
+
+          if (chosen && chosen.name) {
+            // chosen.name is e.g. "models/gemini-2.0-flash"
+            const endpoint = `https://generativelanguage.googleapis.com/v1beta/${chosen.name}:generateContent`;
+            workingGeminiEndpoint = endpoint;
+            localStorage.setItem(GEMINI_MODEL_STORAGE, endpoint);
+            console.log('VocabVault: Resolved working Gemini model ->', chosen.name);
+            return endpoint;
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('VocabVault: ListModels query error, using fallback endpoints:', err);
+    }
+
+    // Default fast candidate if ListModels could not be reached
+    return 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+  }
 
   async function fetchWordDetailsAI(rawWord) {
     const word = (rawWord || '').trim();
@@ -1349,73 +1398,73 @@ Return ONLY a valid JSON object matching this schema:
   "synonyms": "3-4 simple, accurate comma-separated synonyms"
 }`;
 
-    const endpointsToTry = workingGeminiEndpoint
-      ? [workingGeminiEndpoint, ...GEMINI_CANDIDATE_ENDPOINTS.filter((e) => e !== workingGeminiEndpoint)]
-      : GEMINI_CANDIDATE_ENDPOINTS;
+    const endpoint = await resolveGeminiEndpoint(savedApiKey);
+
+    const candidates = [
+      endpoint,
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent',
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent'
+    ].filter((v, i, a) => a.indexOf(v) === i);
 
     let lastErrMsg = '';
 
-    for (const endpoint of endpointsToTry) {
+    for (const url of candidates) {
       try {
-        const res = await fetchWithTimeout(`${endpoint}?key=${encodeURIComponent(savedApiKey)}`, {
+        const res = await fetchWithTimeout(`${url}?key=${encodeURIComponent(savedApiKey)}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             contents: [{ parts: [{ text: promptText }] }],
             generationConfig: {
-              responseMimeType: 'application/json',
               temperature: 0.7,
-              maxOutputTokens: 250
+              maxOutputTokens: 300
             }
           })
-        }, 3500);
+        }, 4500);
 
         if (res.ok) {
           const data = await res.json();
-          let rawJson = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-          rawJson = cleanJsonText(rawJson);
+          const rawPart = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          const parsed = parseAiJsonResponse(rawPart);
 
-          if (rawJson) {
-            const parsed = JSON.parse(rawJson);
-            if (parsed && parsed.meaning && parsed.sentence) {
-              workingGeminiEndpoint = endpoint;
-              localStorage.setItem(GEMINI_MODEL_STORAGE, endpoint);
+          if (parsed && parsed.meaning && parsed.sentence) {
+            workingGeminiEndpoint = url;
+            localStorage.setItem(GEMINI_MODEL_STORAGE, url);
 
-              let cleanSentence = (parsed.sentence || '').trim();
-              if (!/[.!?]$/.test(cleanSentence)) cleanSentence += '.';
-              cleanSentence = cleanSentence.charAt(0).toUpperCase() + cleanSentence.slice(1);
+            let cleanSentence = (parsed.sentence || '').trim();
+            if (!/[.!?]$/.test(cleanSentence)) cleanSentence += '.';
+            cleanSentence = cleanSentence.charAt(0).toUpperCase() + cleanSentence.slice(1);
 
-              let cleanMeaning = (parsed.meaning || '').trim();
-              if (!/[.!?]$/.test(cleanMeaning)) cleanMeaning += '.';
-              cleanMeaning = cleanMeaning.charAt(0).toUpperCase() + cleanMeaning.slice(1);
+            let cleanMeaning = (parsed.meaning || '').trim();
+            if (!/[.!?]$/.test(cleanMeaning)) cleanMeaning += '.';
+            cleanMeaning = cleanMeaning.charAt(0).toUpperCase() + cleanMeaning.slice(1);
 
-              const result = {
-                word: word,
-                pos: parsed.pos || 'Noun',
-                meaning: cleanMeaning,
-                sentence: cleanSentence,
-                notes: parsed.synonyms ? `Synonyms: ${parsed.synonyms}` : ''
-              };
+            const result = {
+              word: word,
+              pos: parsed.pos || 'Noun',
+              meaning: cleanMeaning,
+              sentence: cleanSentence,
+              notes: parsed.synonyms ? `Synonyms: ${parsed.synonyms}` : ''
+            };
 
-              setCachedWord(word, result);
-              return result;
-            }
+            setCachedWord(word, result);
+            return result;
           }
         } else {
           const errorData = await res.json().catch(() => ({}));
           lastErrMsg = errorData.error?.message || `HTTP ${res.status}`;
-          if (res.status === 404 && endpoint === workingGeminiEndpoint) {
+          if (res.status === 404) {
             workingGeminiEndpoint = '';
             localStorage.removeItem(GEMINI_MODEL_STORAGE);
           }
           if (res.status === 400 || res.status === 403 || res.status === 401) {
-            if (lastErrMsg.toLowerCase().includes('key') || lastErrMsg.toLowerCase().includes('credential')) {
+            if (lastErrMsg.toLowerCase().includes('key') || lastErrMsg.toLowerCase().includes('credential') || lastErrMsg.toLowerCase().includes('api_key')) {
               showToast('⚠️ Invalid Gemini API Key. Please check your key in Settings (⚙️).', 'error');
               openSettingsModal();
               return null;
             }
           }
-          // For other errors like 404 (model not found), automatically try the next candidate endpoint
         }
       } catch (err) {
         lastErrMsg = err.message;
@@ -2157,6 +2206,8 @@ Return ONLY a valid JSON object matching this schema:
       geminiApiKeyInput.addEventListener('input', (e) => {
         geminiApiKey = e.target.value.trim();
         localStorage.setItem(GEMINI_KEY_STORAGE, geminiApiKey);
+        workingGeminiEndpoint = '';
+        localStorage.removeItem(GEMINI_MODEL_STORAGE);
       });
     }
 
@@ -2180,6 +2231,11 @@ Return ONLY a valid JSON object matching this schema:
         if (geminiApiKeyInput) {
           geminiApiKey = geminiApiKeyInput.value.trim();
           localStorage.setItem(GEMINI_KEY_STORAGE, geminiApiKey);
+          workingGeminiEndpoint = '';
+          localStorage.removeItem(GEMINI_MODEL_STORAGE);
+          if (geminiApiKey) {
+            resolveGeminiEndpoint(geminiApiKey).catch(() => {});
+          }
         }
         closeSettingsModal();
         showToast('Settings saved successfully!', 'success');
