@@ -303,34 +303,13 @@
             if (!wordKey || seen.has(wordKey)) return;
             seen.add(wordKey);
 
-            let finalMeaning = item.meaning || '';
-            let finalSentence = item.sentence || '';
-            let finalNotes = item.notes || '';
-            let finalPos = item.pos || 'Noun';
-
-            const curated = typeof resolveCuratedOrLemma === 'function' ? resolveCuratedOrLemma(wordKey) : (CURATED_SIMPLE_VOCAB[wordKey] || null);
-            const isTrivial = typeof isTrivialDefinition === 'function' ? isTrivialDefinition(finalMeaning, wordKey) : (finalMeaning.toLowerCase().includes('a caress') || finalMeaning.length < 15);
-            const isOverComplex = finalMeaning.toLowerCase().includes('regard') || finalMeaning.toLowerCase().includes('repugnance') || finalMeaning.length > 80;
-
-            if (curated && (isTrivial || isOverComplex || !finalMeaning || finalMeaning.toLowerCase() === 'a caress.' || finalMeaning.toLowerCase() === 'a caress')) {
-              finalMeaning = curated.meaning;
-              finalPos = curated.pos || finalPos;
-              if (!finalSentence || finalSentence.toLowerCase().includes('literature') || finalSentence.toLowerCase().includes('importance of') || isTrivial) {
-                finalSentence = curated.sentence;
-              }
-              if (!finalNotes || isTrivial) {
-                finalNotes = curated.notes;
-              }
-            } else if (finalMeaning) {
-              finalMeaning = simplifyDefinitionText(finalMeaning);
-            }
-
             deduplicated.push({
               ...item,
-              pos: finalPos,
-              meaning: finalMeaning,
-              sentence: finalSentence || item.sentence,
-              notes: finalNotes || item.notes,
+              word: item.word ? item.word.trim() : '',
+              pos: item.pos || 'Noun',
+              meaning: item.meaning || '',
+              sentence: item.sentence || '',
+              notes: item.notes || '',
               streak: typeof item.streak === 'number' ? item.streak : (item.mastered ? masteryThreshold : 0),
               wrongCount: typeof item.wrongCount === 'number' ? item.wrongCount : 0
             });
@@ -1274,10 +1253,10 @@
   }
 
   /* ==========================================================================
-     Curated Simple Vocabulary Database & AI Linguistic Engine
+     Pure Generative AI Vocabulary Engine (Google Gemini 1.5/2.0 Flash)
      ========================================================================== */
 
-  const VOCAB_CACHE_KEY = 'vocabvault_word_cache_v2';
+  const VOCAB_CACHE_KEY = 'vocabvault_ai_cache_v3';
   let wordDetailsCache = {};
   try {
     const storedCache = localStorage.getItem(VOCAB_CACHE_KEY);
@@ -1301,7 +1280,7 @@
     } catch (e) {}
   }
 
-  async function fetchWithTimeout(url, options = {}, timeoutMs = 2800) {
+  async function fetchWithTimeout(url, options = {}, timeoutMs = 4000) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
@@ -1314,543 +1293,111 @@
     }
   }
 
-  const CURATED_SIMPLE_VOCAB = {
-    abhor: { pos: 'Verb', meaning: 'To hate or detest something deeply.', sentence: 'She truly abhors any form of cruelty or injustice.', notes: 'Synonyms: hate, detest, loathe, despise' },
-    aberration: { pos: 'Noun', meaning: 'Something different from what is normal or expected.', sentence: 'Her angry outburst was an unusual aberration from her calm behavior.', notes: 'Synonyms: anomaly, deviation, abnormality' },
-    acquiesce: { pos: 'Verb', meaning: 'To agree to something without arguing or protesting.', sentence: 'He decided to acquiesce to avoid further conflict with his manager.', notes: 'Synonyms: consent, agree, comply, submit' },
-    acumen: { pos: 'Noun', meaning: 'The ability to make good judgments and quick decisions.', sentence: 'Her sharp business acumen helped the startup succeed.', notes: 'Synonyms: insight, sharpness, shrewdness' },
-    adulation: { pos: 'Noun', meaning: 'Excessive praise, admiration, or flattery.', sentence: 'The famous musician received adulation from millions of fans.', notes: 'Synonyms: praise, admiration, worship' },
-    aesthetic: { pos: 'Adjective', meaning: 'Concerned with beauty or the appreciation of beauty.', sentence: 'The minimalist interior design had a clean aesthetic appeal.', notes: 'Synonyms: artistic, tasteful, beautiful' },
-    alacrity: { pos: 'Noun', meaning: 'Brisk and cheerful readiness to do something.', sentence: 'She accepted the job offer with great alacrity.', notes: 'Synonyms: eagerness, willingness, readiness' },
-    alleviate: { pos: 'Verb', meaning: 'To make pain, worry, or difficulty less severe.', sentence: 'A warm cup of herbal tea helped alleviate her headache.', notes: 'Synonyms: ease, relieve, reduce, lessen' },
-    altruistic: { pos: 'Adjective', meaning: 'Showing selfless concern for the well-being of others.', sentence: 'His altruistic donations supported local animal shelters.', notes: 'Synonyms: unselfish, generous, kind' },
-    ambiguous: { pos: 'Adjective', meaning: 'Open to more than one interpretation; unclear.', sentence: 'The ambiguous contract instructions confused both parties.', notes: 'Synonyms: unclear, vague, doubtful' },
-    ameliorate: { pos: 'Verb', meaning: 'To make a bad or unpleasant situation better.', sentence: 'New policies were enacted to ameliorate living conditions.', notes: 'Synonyms: improve, better, enhance' },
-    anomaly: { pos: 'Noun', meaning: 'Something that deviates from what is standard or normal.', sentence: 'The temperature spike was a rare weather anomaly.', notes: 'Synonyms: irregularity, deviation, exception' },
-    antipathy: { pos: 'Noun', meaning: 'A deep-seated feeling of dislike or hostility.', sentence: 'He felt a strong antipathy toward dishonest behavior.', notes: 'Synonyms: hostility, hatred, aversion' },
-    apathy: { pos: 'Noun', meaning: 'Lack of interest, enthusiasm, or concern.', sentence: 'Widespread public apathy led to low voter turnout.', notes: 'Synonyms: indifference, unconcern, passivity' },
-    articulate: { pos: 'Adjective', meaning: 'Fluent, clear, and effective in expressing ideas.', sentence: 'She gave an articulate summary of the research findings.', notes: 'Synonyms: fluent, eloquent, expressive' },
-    assiduous: { pos: 'Adjective', meaning: 'Showing great care, attention, and effort.', sentence: 'Through assiduous research, the scientist solved the puzzle.', notes: 'Synonyms: diligent, meticulous, hardworking' },
-    audacious: { pos: 'Adjective', meaning: 'Showing a willingness to take bold risks.', sentence: 'The startup made an audacious bid to enter the global market.', notes: 'Synonyms: bold, daring, fearless, brave' },
-    austere: { pos: 'Adjective', meaning: 'Severe, strict, or plain and without luxury.', sentence: 'The monks lived an austere and disciplined life in the mountains.', notes: 'Synonyms: strict, simple, plain, harsh' },
-    avarice: { pos: 'Noun', meaning: 'Extreme greed for wealth or material gain.', sentence: 'His endless avarice ultimately destroyed his business partnerships.', notes: 'Synonyms: greed, cupidity, materialism' },
-    belligerent: { pos: 'Adjective', meaning: 'Hostile and aggressive; ready to fight.', sentence: 'The belligerent customer argued loudly with the store manager.', notes: 'Synonyms: hostile, aggressive, combative' },
-    benevolent: { pos: 'Adjective', meaning: 'Kind, generous, and caring about others.', sentence: 'The benevolent donor funded scholarships for hundreds of students.', notes: 'Synonyms: kind, generous, compassionate, charitable' },
-    bolster: { pos: 'Verb', meaning: 'To support, strengthen, or build up.', sentence: 'Solid evidence helped bolster her argument during the debate.', notes: 'Synonyms: support, reinforce, strengthen' },
-    cacophony: { pos: 'Noun', meaning: 'A harsh, loud mixture of unpleasant sounds.', sentence: 'A cacophony of car horns echoed through the busy city street.', notes: 'Synonyms: noise, racket, din, discord' },
-    candid: { pos: 'Adjective', meaning: 'Truthful, straightforward, and honest.', sentence: 'He gave a candid and honest answer during the interview.', notes: 'Synonyms: honest, frank, outspoken, direct' },
-    capricious: { pos: 'Adjective', meaning: 'Given to sudden and unpredictable changes of mood.', sentence: 'Her capricious moods made it difficult to predict her reactions.', notes: 'Synonyms: fickle, unpredictable, erratic' },
-    caress: { pos: 'Verb', meaning: 'To touch or stroke gently and lovingly.', sentence: 'She caressed the baby\'s cheek with a gentle smile.', notes: 'Synonyms: stroke, touch gently, pet' },
-    catalyst: { pos: 'Noun', meaning: 'A person or thing that precipitates an event or change.', sentence: 'The new invention served as a catalyst for green technology.', notes: 'Synonyms: spark, incentive, trigger' },
-    caustic: { pos: 'Adjective', meaning: 'Sarcastic in a scathing and bitter way.', sentence: 'His caustic remarks offended several members of the team.', notes: 'Synonyms: sarcastic, biting, sharp, harsh' },
-    clandestine: { pos: 'Adjective', meaning: 'Done in secret or kept quiet.', sentence: 'They held clandestine meetings after hours to plan the event.', notes: 'Synonyms: secret, covert, hidden, undercover' },
-    cogent: { pos: 'Adjective', meaning: 'Clear, logical, and convincing.', sentence: 'The attorney presented a cogent argument that swayed the jury.', notes: 'Synonyms: convincing, compelling, strong' },
-    complacent: { pos: 'Adjective', meaning: 'Smug and uncritical satisfaction with oneself.', sentence: 'We cannot become complacent after achieving early success.', notes: 'Synonyms: smug, satisfied, unworried' },
-    conciliatory: { pos: 'Adjective', meaning: 'Intended to placate, pacify, or resolve conflict.', sentence: 'He took a conciliatory tone to ease tension in the meeting.', notes: 'Synonyms: peaceable, soothing, appeasing' },
-    conspicuous: { pos: 'Adjective', meaning: 'Clearly visible or attracting noticeable attention.', sentence: 'Her bright yellow coat was conspicuous in the sea of gray.', notes: 'Synonyms: noticeable, obvious, prominent' },
-    conundrum: { pos: 'Noun', meaning: 'A confusing, intricate, and difficult problem.', sentence: 'Resolving the budget deficit proved to be a difficult conundrum.', notes: 'Synonyms: puzzle, riddle, dilemma' },
-    copious: { pos: 'Adjective', meaning: 'Abundant in supply or quantity.', sentence: 'She took copious notes during every university lecture.', notes: 'Synonyms: abundant, plentiful, generous' },
-    corroborate: { pos: 'Verb', meaning: 'To confirm or give support to a statement.', sentence: 'Witnesses were able to corroborate her story with video proof.', notes: 'Synonyms: confirm, verify, back up' },
-    debilitate: { pos: 'Verb', meaning: 'To make someone or something very weak.', sentence: 'The severe fever can quickly debilitate healthy patients.', notes: 'Synonyms: weaken, enfeeble, drain, exhaust' },
-    deference: { pos: 'Noun', meaning: 'Polite submission and respect toward someone.', sentence: 'She listened to the elder professor with deep deference.', notes: 'Synonyms: respect, honor, reverence' },
-    delineate: { pos: 'Verb', meaning: 'To describe or outline something precisely.', sentence: 'The contract clearly delineated the responsibilities of both parties.', notes: 'Synonyms: outline, describe, define' },
-    diligent: { pos: 'Adjective', meaning: 'Showing persistent care and steady effort in one’s work.', sentence: 'The diligent student reviewed vocabulary flashcards every morning.', notes: 'Synonyms: hardworking, attentive, assiduous' },
-    disdain: { pos: 'Noun', meaning: 'The feeling that someone or something is unworthy of respect.', sentence: 'He looked at the dishonest proposal with open disdain.', notes: 'Synonyms: contempt, scorn, disrespect' },
-    disingenuous: { pos: 'Adjective', meaning: 'Not candid or sincere; pretending to know less.', sentence: 'It was disingenuous of him to claim he never saw the warning.', notes: 'Synonyms: dishonest, insincere, deceptive' },
-    disparate: { pos: 'Adjective', meaning: 'Essentially different in kind; not allowing comparison.', sentence: 'The team brought together experts from disparate disciplines.', notes: 'Synonyms: different, diverse, contrasting' },
-    dogmatic: { pos: 'Adjective', meaning: 'Inclined to lay down principles as incontrovertibly true.', sentence: 'He was so dogmatic that he refused to hear opposing viewpoints.', notes: 'Synonyms: opinionated, assertive, inflexible' },
-    ebullient: { pos: 'Adjective', meaning: 'Cheerful, lively, and full of buoyant energy.', sentence: 'The ebullient fans cheered excitedly as their team scored.', notes: 'Synonyms: joyful, bubbly, exuberant' },
-    eclectic: { pos: 'Adjective', meaning: 'Deriving ideas or taste from a broad, diverse range.', sentence: 'Her apartment is filled with an eclectic mix of vintage art.', notes: 'Synonyms: diverse, wide-ranging, varied' },
-    efficacious: { pos: 'Adjective', meaning: 'Successful in producing a desired or intended result.', sentence: 'The new vaccine proved remarkably efficacious in trials.', notes: 'Synonyms: effective, efficient, productive' },
-    egregious: { pos: 'Adjective', meaning: 'Outstandingly bad or shockingly offensive.', sentence: 'Copyright infringement was an egregious error in the article.', notes: 'Synonyms: shocking, terrible, horrific' },
-    eloquent: { pos: 'Adjective', meaning: 'Fluent, clear, and persuasive in speech or writing.', sentence: 'Her eloquent presentation on clean energy inspired the entire team.', notes: 'Synonyms: articulate, expressive, persuasive, fluent' },
-    eloquently: { pos: 'Adverb', meaning: 'In a fluent, persuasive, and beautifully expressed manner.', sentence: 'She spoke eloquently about the importance of equal education.', notes: 'Synonyms: articulately, persuasively, expressively' },
-    elucidate: { pos: 'Verb', meaning: 'To make something clear; explain thoroughly.', sentence: 'The diagram helped elucidate the difficult math concept.', notes: 'Synonyms: explain, clarify, illuminate' },
-    empathy: { pos: 'Noun', meaning: 'The ability to understand and share the feelings of others.', sentence: 'Showing empathy makes you a supportive friend and leader.', notes: 'Synonyms: compassion, understanding, sympathy' },
-    emulate: { pos: 'Verb', meaning: 'To match or surpass a person or achievement, typically by imitation.', sentence: 'Young athletes strive to emulate their favorite champions.', notes: 'Synonyms: imitate, copy, follow' },
-    enigma: { pos: 'Noun', meaning: 'A person or thing that is mysterious or hard to explain.', sentence: 'His sudden departure remained an unsolved enigma for years.', notes: 'Synonyms: mystery, puzzle, riddle' },
-    ephemeral: { pos: 'Adjective', meaning: 'Lasting for a very short time; fleeting.', sentence: 'The beauty of the morning mist was delightfully ephemeral.', notes: 'Synonyms: fleeting, temporary, short-lived, transient' },
-    equanimity: { pos: 'Noun', meaning: 'Mental calmness and composure, especially in a difficult situation.', sentence: 'She faced the emergency with remarkable equanimity.', notes: 'Synonyms: calmness, composure, serenity' },
-    equivocal: { pos: 'Adjective', meaning: 'Open to more than one interpretation; ambiguous.', sentence: 'The politician gave an equivocal response to the question.', notes: 'Synonyms: ambiguous, unclear, evasive' },
-    erudite: { pos: 'Adjective', meaning: 'Having or showing great knowledge or learning.', sentence: 'The erudite professor authored ten books on ancient Rome.', notes: 'Synonyms: scholarly, learned, educated' },
-    esoteric: { pos: 'Adjective', meaning: 'Understood by only a small group with specialized knowledge.', sentence: 'The lecture explored esoteric topics in quantum physics.', notes: 'Synonyms: obscure, specialized, complex, niche' },
-    exacerbate: { pos: 'Verb', meaning: 'To make a problem, bad situation, or negative feeling worse.', sentence: 'Lack of sleep will only exacerbate your fatigue.', notes: 'Synonyms: worsen, aggravate, inflame' },
-    exemplify: { pos: 'Verb', meaning: 'To be a typical or prime example of something.', sentence: 'Her dedication exemplifies true leadership in the workplace.', notes: 'Synonyms: demonstrate, illustrate, represent' },
-    fastidious: { pos: 'Adjective', meaning: 'Very attentive to detail and hard to please.', sentence: 'He is fastidious about keeping his desk organized and tidy.', notes: 'Synonyms: meticulous, perfectionist, thorough' },
-    foster: { pos: 'Verb', meaning: 'To encourage or promote the development of something.', sentence: 'The teacher worked hard to foster curiosity among students.', notes: 'Synonyms: encourage, nurture, promote' },
-    frugal: { pos: 'Adjective', meaning: 'Careful with money and resources; avoiding waste.', sentence: 'Her frugal habits allowed her to save up for her first home.', notes: 'Synonyms: thrifty, economical, sparing' },
-    garrulous: { pos: 'Adjective', meaning: 'Excessively talkative about trivial things.', sentence: 'The garrulous neighbor talked for an hour about the weather.', notes: 'Synonyms: talkative, chatty, loquacious' },
-    gregarious: { pos: 'Adjective', meaning: 'Fond of company; sociable and outgoing.', sentence: 'As a gregarious host, he welcomed everyone with open arms.', notes: 'Synonyms: sociable, friendly, outgoing' },
-    hackneyed: { pos: 'Adjective', meaning: 'Overused, unoriginal, and lacking fresh appeal.', sentence: 'The movie relied on hackneyed romance clichés.', notes: 'Synonyms: clichéd, overused, stale, trite' },
-    harmony: { pos: 'Noun', meaning: 'Agreement or concord; pleasant combination of elements.', sentence: 'The diverse team worked together in complete harmony.', notes: 'Synonyms: peace, agreement, unity' },
-    iconoclast: { pos: 'Noun', meaning: 'A person who attacks cherished beliefs or traditional institutions.', sentence: 'The modernist painter was seen as an iconoclast in traditional circles.', notes: 'Synonyms: rebel, nonconformist, individualist' },
-    illuminate: { pos: 'Verb', meaning: 'To clarify, make clear, or light up.', sentence: 'Her insightful article helped illuminate complex tax laws.', notes: 'Synonyms: clarify, explain, brighten' },
-    impeccable: { pos: 'Adjective', meaning: 'In accordance with the highest standards; faultless.', sentence: 'She delivered an impeccable presentation with zero flaws.', notes: 'Synonyms: flawless, perfect, spotless' },
-    impetuous: { pos: 'Adjective', meaning: 'Acting quickly without thinking or care.', sentence: 'His impetuous decision to travel without a plan caused trouble.', notes: 'Synonyms: impulsive, rash, hasty, reckless' },
-    inadvertent: { pos: 'Adjective', meaning: 'Not resulting from or achieved through deliberate planning.', sentence: 'An inadvertent omission in the report was quickly corrected.', notes: 'Synonyms: unintentional, accidental, unintended' },
-    incisive: { pos: 'Adjective', meaning: 'Intelligently analytical and clear-thinking.', sentence: 'The journalist asked sharp and incisive questions.', notes: 'Synonyms: sharp, acute, penetrating' },
-    indolent: { pos: 'Adjective', meaning: 'Wanting to avoid activity or exertion; lazy.', sentence: 'Hot summer days often induce an indolent feeling.', notes: 'Synonyms: lazy, idle, sluggish' },
-    ineffable: { pos: 'Adjective', meaning: 'Too great, powerful, or beautiful to describe with words.', sentence: 'Standing atop the mountain filled her with ineffable joy.', notes: 'Synonyms: indescribable, unutterable, breathtaking' },
-    ingenious: { pos: 'Adjective', meaning: 'Clever, original, and inventive in idea or method.', sentence: 'She came up with an ingenious solution to reduce plastic waste.', notes: 'Synonyms: clever, inventive, creative' },
-    innocuous: { pos: 'Adjective', meaning: 'Not harmful or offensive; harmless.', sentence: 'The remark seemed innocuous, but it sparked a deep debate.', notes: 'Synonyms: harmless, safe, non-toxic' },
-    insipid: { pos: 'Adjective', meaning: 'Lacking flavor, vigor, or interest; dull.', sentence: 'The soup was insipid and needed a pinch of salt.', notes: 'Synonyms: bland, dull, flavorless' },
-    integrity: { pos: 'Noun', meaning: 'The quality of being honest and having strong moral principles.', sentence: 'Her unwavering integrity earned her respect across the company.', notes: 'Synonyms: honesty, honor, uprightness' },
-    intrepid: { pos: 'Adjective', meaning: 'Fearless and adventurous.', sentence: 'The intrepid explorers ventured deep into uncharted jungle.', notes: 'Synonyms: fearless, brave, courageous' },
-    judicious: { pos: 'Adjective', meaning: 'Having, showing, or done with good sense and sound judgment.', sentence: 'Through judicious spending, they saved for their retirement.', notes: 'Synonyms: sensible, wise, prudent' },
-    juxtapose: { pos: 'Verb', meaning: 'To place two things side by side to compare differences.', sentence: 'The art gallery juxtaposed ancient pottery with modern sculptures.', notes: 'Synonyms: compare, contrast, place together' },
-    laconic: { pos: 'Adjective', meaning: 'Using very few words in speech or writing.', sentence: 'His laconic reply was simply "Yes."', notes: 'Synonyms: brief, concise, terse' },
-    laudable: { pos: 'Adjective', meaning: 'Deserving praise and commendation.', sentence: 'Her voluntary service at the hospital was truly laudable.', notes: 'Synonyms: praiseworthy, commendable, admirable' },
-    lethargic: { pos: 'Adjective', meaning: 'Lacking energy, enthusiasm, or physical speed.', sentence: 'The humid afternoon made everyone feel lethargic and slow.', notes: 'Synonyms: sluggish, tired, inactive, lazy' },
-    lucid: { pos: 'Adjective', meaning: 'Expressed clearly and easy to understand.', sentence: 'She gave a lucid explanation of the company’s new roadmap.', notes: 'Synonyms: clear, plain, simple, understandable' },
-    magnanimous: { pos: 'Adjective', meaning: 'Generous or forgiving, especially toward a rival or less powerful person.', sentence: 'The winner was magnanimous in victory and praised his opponent.', notes: 'Synonyms: generous, charitable, noble' },
-    malleable: { pos: 'Adjective', meaning: 'Easily shaped, bent, or influenced.', sentence: 'Copper is a malleable metal easily molded into wires.', notes: 'Synonyms: pliable, flexible, adaptable' },
-    mellifluous: { pos: 'Adjective', meaning: 'Sweet-sounding, smooth, and pleasant to hear.', sentence: 'The podcast host has a warm and mellifluous voice.', notes: 'Synonyms: sweet, soothing, musical, melodious' },
-    meticulous: { pos: 'Adjective', meaning: 'Showing great attention to detail; very careful and precise.', sentence: 'The architect drew meticulous blueprints for the new library.', notes: 'Synonyms: thorough, careful, precise' },
-    mitigate: { pos: 'Verb', meaning: 'To make something bad less severe or harmful.', sentence: 'Good precautions helped mitigate the impact of the flood.', notes: 'Synonyms: reduce, lessen, alleviate, ease' },
-    morose: { pos: 'Adjective', meaning: 'Sullen and ill-tempered; gloomy.', sentence: 'He sat in the corner looking morose after hearing the news.', notes: 'Synonyms: gloomy, sullen, sour' },
-    mundane: { pos: 'Adjective', meaning: 'Lacking interest or excitement; dull and ordinary.', sentence: 'He wanted to escape mundane daily routines with a vacation.', notes: 'Synonyms: ordinary, routine, everyday' },
-    nefarious: { pos: 'Adjective', meaning: 'Extremely wicked, evil, or criminal.', sentence: 'The authorities stopped the hacker\'s nefarious scheme.', notes: 'Synonyms: evil, wicked, criminal, villainous' },
-    nonchalant: { pos: 'Adjective', meaning: 'Feeling or appearing calm, relaxed, and unconcerned.', sentence: 'She gave a nonchalant shrug as if the contest didn\'t matter.', notes: 'Synonyms: casual, calm, cool, unconcerned' },
-    nostalgia: { pos: 'Noun', meaning: 'A sentimental longing for the past.', sentence: 'Looking through old childhood photos brought a wave of nostalgia.', notes: 'Synonyms: longing, reminiscence, yearning' },
-    nuance: { pos: 'Noun', meaning: 'A subtle distinction or slight difference in meaning.', sentence: 'A great translator catches every subtle nuance in the dialogue.', notes: 'Synonyms: subtlety, shade, distinction' },
-    oblivious: { pos: 'Adjective', meaning: 'Not aware of or noticing what is happening around.', sentence: 'Deep in thought, she was oblivious to the surrounding noise.', notes: 'Synonyms: unaware, unmindful, heedless' },
-    obsolete: { pos: 'Adjective', meaning: 'No longer produced or used; out of date.', sentence: 'Floppy disks became obsolete once flash drives emerged.', notes: 'Synonyms: outdated, outmoded, antiquated' },
-    obstinate: { pos: 'Adjective', meaning: 'Stubbornly refusing to change one’s opinion or course of action.', sentence: 'The obstinate toddler refused to put on his winter coat.', notes: 'Synonyms: stubborn, headstrong, unyielding' },
-    opaque: { pos: 'Adjective', meaning: 'Not transparent; hard to understand or explain.', sentence: 'The company\'s opaque financial reporting raised concerns.', notes: 'Synonyms: unclear, obscure, cloudy' },
-    ostentatious: { pos: 'Adjective', meaning: 'Showy and intended to impress or attract attention.', sentence: 'He avoided ostentatious displays of wealth and lived modestly.', notes: 'Synonyms: flashy, showy, extravagant, pretentious' },
-    panacea: { pos: 'Noun', meaning: 'A solution or remedy for all difficulties or diseases.', sentence: 'Technology is helpful, but it is not a panacea for all societal ills.', notes: 'Synonyms: cure-all, universal remedy' },
-    paradigm: { pos: 'Noun', meaning: 'A typical example, model, or pattern of something.', sentence: 'Remote work represents a major paradigm shift in office culture.', notes: 'Synonyms: model, pattern, standard' },
-    pedantic: { pos: 'Adjective', meaning: 'Excessively concerned with minor rules and trivial details.', sentence: 'His pedantic corrections during casual chats irritated his peers.', notes: 'Synonyms: fussy, over-exacting, punctilious' },
-    perfunctory: { pos: 'Adjective', meaning: 'Carried out with a minimum of effort or reflection.', sentence: 'He gave a perfunctory nod before heading back to work.', notes: 'Synonyms: hurried, casual, routine' },
-    pernicious: { pos: 'Adjective', meaning: 'Having a gradual, subtle, but harmful effect.', sentence: 'Excessive sugar intake has a pernicious effect on long-term health.', notes: 'Synonyms: harmful, destructive, damaging' },
-    perseverance: { pos: 'Noun', meaning: 'Persistence in doing something despite difficulty or delay.', sentence: 'Her perseverance through challenging semesters led to graduation.', notes: 'Synonyms: persistence, determination, tenacity' },
-    perspicacious: { pos: 'Adjective', meaning: 'Having quick insight and clear understanding of things.', sentence: 'Her perspicacious insight helped solve the complex riddle.', notes: 'Synonyms: sharp, insightful, perceptive, observant' },
-    pervasive: { pos: 'Adjective', meaning: 'Spreading widely throughout an area or group of people.', sentence: 'The pervasive aroma of fresh coffee filled the bakery.', notes: 'Synonyms: widespread, ubiquitous, extensive' },
-    plausible: { pos: 'Adjective', meaning: 'Seeming reasonable, likely, or probable.', sentence: 'She gave a completely plausible explanation for being late.', notes: 'Synonyms: credible, reasonable, believable' },
-    plethora: { pos: 'Noun', meaning: 'A large or excessive amount of something.', sentence: 'The online library offers a plethora of free learning courses.', notes: 'Synonyms: excess, abundance, surplus, wealth' },
-    poignant: { pos: 'Adjective', meaning: 'Evoking a keen sense of sadness, regret, or emotion.', sentence: 'The novel ended on a poignant note about family sacrifices.', notes: 'Synonyms: touching, moving, emotional, sad' },
-    pragmatic: { pos: 'Adjective', meaning: 'Dealing with problems sensibly and realistically.', sentence: 'They chose a pragmatic plan that could be finished on time.', notes: 'Synonyms: practical, sensible, realistic' },
-    precocious: { pos: 'Adjective', meaning: 'Having developed abilities earlier than usual.', sentence: 'The precocious child was playing complex piano sonatas at age five.', notes: 'Synonyms: gifted, advanced, mature' },
-    profound: { pos: 'Adjective', meaning: 'Very great, intense, or having deep insight.', sentence: 'The mentor’s advice had a profound influence on her career.', notes: 'Synonyms: deep, insightful, intense' },
-    prolific: { pos: 'Adjective', meaning: 'Producing much fruit, foliage, or many works.', sentence: 'The prolific author published two novels every single year.', notes: 'Synonyms: productive, creative, fertile' },
-    prudent: { pos: 'Adjective', meaning: 'Acting with or showing care and thought for the future.', sentence: 'It is prudent to save an emergency fund for unexpected expenses.', notes: 'Synonyms: wise, sensible, cautious' },
-    quandary: { pos: 'Noun', meaning: 'A state of perplexity or uncertainty over what to do.', sentence: 'He was in a quandary about whether to accept the overseas post.', notes: 'Synonyms: dilemma, predicament, puzzle' },
-    quell: { pos: 'Verb', meaning: 'To put an end to something, typically by force or persuasion.', sentence: 'The CEO gave a speech to quell rumors of impending layoffs.', notes: 'Synonyms: suppress, soothe, calm' },
-    quixotic: { pos: 'Adjective', meaning: 'Idealistic in an unrealistic and impractical way.', sentence: 'His quixotic goal to fix all traffic in a day failed.', notes: 'Synonyms: unrealistic, impractical, romantic' },
-    rancor: { pos: 'Noun', meaning: 'Long-standing bitterness or deep resentment.', sentence: 'The rivals shook hands without any lingering rancor.', notes: 'Synonyms: bitterness, grudge, resentment, hatred' },
-    recalcitrant: { pos: 'Adjective', meaning: 'Having an obstinately uncooperative attitude.', sentence: 'The recalcitrant student refused to follow classroom rules.', notes: 'Synonyms: uncooperative, stubborn, rebellious' },
-    redundant: { pos: 'Adjective', meaning: 'Not or no longer needed or useful; superfluous.', sentence: 'Eliminating redundant steps sped up the checkout process.', notes: 'Synonyms: unnecessary, excess, superfluous' },
-    resilience: { pos: 'Noun', meaning: 'The capacity to withstand or recover quickly from difficulties.', sentence: 'The resilience of the hospital staff during the crisis was inspiring.', notes: 'Synonyms: toughness, strength, endurance, grit' },
-    resilient: { pos: 'Adjective', meaning: 'Able to recover quickly from hardship or difficulty.', sentence: 'The small community was resilient and rebuilt after the storm.', notes: 'Synonyms: tough, strong, adaptable, hardy' },
-    reticent: { pos: 'Adjective', meaning: 'Not revealing thoughts or feelings easily; reserved.', sentence: 'She is reticent about discussing her personal achievements.', notes: 'Synonyms: reserved, quiet, private, shy' },
-    robust: { pos: 'Adjective', meaning: 'Strong, healthy, and vigorous in operation.', sentence: 'The app has a robust security system to protect user data.', notes: 'Synonyms: strong, durable, sturdy' },
-    sagacious: { pos: 'Adjective', meaning: 'Wise, insightful, and having good judgment.', sentence: 'The senior engineer offered sagacious advice to the team.', notes: 'Synonyms: wise, clever, sensible, astute' },
-    scrutinize: { pos: 'Verb', meaning: 'To examine or inspect closely and thoroughly.', sentence: 'Auditors will scrutinize every financial transaction carefully.', notes: 'Synonyms: inspect, examine, investigate' },
-    serendipitous: { pos: 'Adjective', meaning: 'Occurring or discovered by happy chance; lucky.', sentence: 'Their serendipitous meeting at the airport led to a lifelong friendship.', notes: 'Synonyms: lucky, accidental, fortuitous, fortunate' },
-    serendipity: { pos: 'Noun', meaning: 'Finding valuable or pleasant things by happy chance.', sentence: 'Meeting my best friend on a delayed train was pure serendipity.', notes: 'Synonyms: luck, chance, happy coincidence' },
-    stoic: { pos: 'Adjective', meaning: 'Enduring pain or hardship without showing feelings or complaining.', sentence: 'He maintained a stoic expression despite the severe pain.', notes: 'Synonyms: uncomplaining, calm, impassive' },
-    sublime: { pos: 'Adjective', meaning: 'Of such excellence, grandeur, or beauty as to inspire admiration.', sentence: 'The sunset over the snowcapped peaks was a sublime sight.', notes: 'Synonyms: breathtaking, magnificent, grand' },
-    subtle: { pos: 'Adjective', meaning: 'So delicate or precise as to be difficult to analyze.', sentence: 'There was a subtle hint of cinnamon in the apple pie.', notes: 'Synonyms: fine, delicate, understated' },
-    succinct: { pos: 'Adjective', meaning: 'Briefly and clearly expressed; concise.', sentence: 'Her succinct memo answered all the executive board\'s questions.', notes: 'Synonyms: concise, brief, compact' },
-    superfluous: { pos: 'Adjective', meaning: 'Unnecessary, especially through being more than enough.', sentence: 'Delete superfluous words to keep your writing crisp and clear.', notes: 'Synonyms: extra, redundant, unneeded' },
-    surreptitious: { pos: 'Adjective', meaning: 'Done in secret to avoid being noticed.', sentence: 'He took a surreptitious photo of the whiteboard notes.', notes: 'Synonyms: secret, stealthy, covert, sneaky' },
-    taciturn: { pos: 'Adjective', meaning: 'Habitually quiet and saying very little.', sentence: 'My uncle is a taciturn man who only speaks when necessary.', notes: 'Synonyms: quiet, reserved, silent, reticent' },
-    tangible: { pos: 'Adjective', meaning: 'Perceptible by touch; clear and definite.', sentence: 'The company saw tangible improvements in customer satisfaction.', notes: 'Synonyms: touchable, real, concrete, clear' },
-    tenacious: { pos: 'Adjective', meaning: 'Holding firmly to a purpose; persistent and determined.', sentence: 'Her tenacious attitude helped her master coding in six months.', notes: 'Synonyms: persistent, determined, stubborn' },
-    transient: { pos: 'Adjective', meaning: 'Lasting only for a short time; impermanent.', sentence: 'A transient summer shower cooled down the afternoon heat.', notes: 'Synonyms: temporary, fleeting, brief' },
-    ubiquitous: { pos: 'Adjective', meaning: 'Present, appearing, or found everywhere.', sentence: 'Wi-Fi internet has become ubiquitous in almost all cities.', notes: 'Synonyms: omnipresent, everywhere, universal' },
-    unprecedented: { pos: 'Adjective', meaning: 'Never done or known before.', sentence: 'The team achieved unprecedented growth in their second quarter.', notes: 'Synonyms: unmatched, unparalleled, novel' },
-    vacillate: { pos: 'Verb', meaning: 'To waver between different opinions; be indecisive.', sentence: 'He vacillated between studying design or computer engineering.', notes: 'Synonyms: hesitate, waver, fluctuate' },
-    venerate: { pos: 'Verb', meaning: 'To regard with great respect; revere.', sentence: 'Many cultures venerate elders for their wisdom and guidance.', notes: 'Synonyms: revere, respect, honor' },
-    versatile: { pos: 'Adjective', meaning: 'Able to adapt or be adapted to many different functions.', sentence: 'A versatile software tool that handles note-taking and flashcards.', notes: 'Synonyms: adaptable, flexible, all-around' },
-    viable: { pos: 'Adjective', meaning: 'Capable of working successfully; feasible.', sentence: 'Solar energy is a viable alternative for sustainable power.', notes: 'Synonyms: feasible, workable, practical' },
-    vindicate: { pos: 'Verb', meaning: 'To clear someone of blame or suspicion.', sentence: 'Newly discovered video footage helped vindicate the accused driver.', notes: 'Synonyms: clear, acquit, exonerate' },
-    voracious: { pos: 'Adjective', meaning: 'Eagerly consuming large amounts of food or information.', sentence: 'She is a voracious reader who finishes three novels a week.', notes: 'Synonyms: hungry, eager, ravenous, insatiable' },
-    wistful: { pos: 'Adjective', meaning: 'Having a gentle or regretful feeling of longing.', sentence: 'He cast a wistful look at his childhood hometown.', notes: 'Synonyms: nostalgic, longing, yearning' },
-    zealous: { pos: 'Adjective', meaning: 'Full of passion, energy, and strong enthusiasm.', sentence: 'She is a zealous advocate for wildlife protection.', notes: 'Synonyms: passionate, enthusiastic, devoted, eager' },
-    zenith: { pos: 'Noun', meaning: 'The highest point reached by a celestial or other object; peak.', sentence: 'At the zenith of her career, she won three prestigious awards.', notes: 'Synonyms: peak, summit, pinnacle' }
-  };
-
-  function getCandidateLemmas(word) {
-    const w = (word || '').trim().toLowerCase();
-    const candidates = [w];
-    if (w.endsWith('ing')) {
-      candidates.push(w.slice(0, -3));
-      candidates.push(w.slice(0, -3) + 'e');
-      if (w.length > 5 && w[w.length - 4] === w[w.length - 5]) candidates.push(w.slice(0, -4));
-    } else if (w.endsWith('ed')) {
-      candidates.push(w.slice(0, -2));
-      candidates.push(w.slice(0, -1));
-      if (w.length > 4 && w[w.length - 3] === w[w.length - 4]) candidates.push(w.slice(0, -3));
-    } else if (w.endsWith('ies')) {
-      candidates.push(w.slice(0, -3) + 'y');
-    } else if (w.endsWith('es')) {
-      candidates.push(w.slice(0, -2));
-      candidates.push(w.slice(0, -1));
-    } else if (w.endsWith('s') && !w.endsWith('ss')) {
-      candidates.push(w.slice(0, -1));
-    } else if (w.endsWith('ly')) {
-      candidates.push(w.slice(0, -2));
-      candidates.push(w.slice(0, -2) + 'e');
-    } else if (w.endsWith('ness')) {
-      candidates.push(w.slice(0, -4));
-    }
-    return Array.from(new Set(candidates.filter((c) => c.length >= 2)));
-  }
-
-  function isTrivialDefinition(def, word) {
-    if (!def) return true;
-    let d = def.toLowerCase().trim().replace(/[.!?]/g, '');
-    d = d.replace(/^(n|v|adj|adv|phr\.?\s*v|idiom)\.?\s*/i, '').trim();
-    const w = (word || '').toLowerCase().trim();
-    if (!w) return false;
-    const baseW = w.replace(/ing$/, '').replace(/ed$/, '').replace(/s$/, '').replace(/ly$/, '');
-    if (d === w || d === 'a ' + w || d === 'an ' + w || d === 'the ' + w) return true;
-    if (d === baseW || d === 'a ' + baseW || d === 'an ' + baseW || d === 'the ' + baseW) return true;
-    if (d.startsWith('present participle of') || d.startsWith('plural of') || d.startsWith('past participle of') || d.startsWith('relating to ')) return d.length < 35;
-    if (d.length <= 15 && (!d.includes(' ') || d.split(' ').length <= 2)) return true;
-    return false;
-  }
-
-  function resolveCuratedOrLemma(word) {
-    const lemmas = getCandidateLemmas(word);
-    for (const lem of lemmas) {
-      if (CURATED_SIMPLE_VOCAB[lem]) {
-        const cur = CURATED_SIMPLE_VOCAB[lem];
-        if (lem === word.toLowerCase()) return { ...cur, word };
-        
-        // Transform base verb meaning to gerund/participle if original word ends in ing
-        let meaning = cur.meaning;
-        if (word.toLowerCase().endsWith('ing') && meaning.startsWith('To ')) {
-          meaning = meaning.replace(/^To\s+([a-z]+)/i, (m, v) => {
-            if (v.endsWith('e')) return v.slice(0, -1) + 'ing';
-            return v + 'ing';
-          });
-        }
-        return {
-          word: word,
-          pos: cur.pos,
-          meaning: meaning,
-          sentence: cur.sentence,
-          notes: cur.notes
-        };
-      }
-    }
-    return null;
-  }
-
-  function simplifyDefinitionText(text) {
-    if (!text) return '';
-    let cleaned = text
-      .replace(/\s*\((transitive|intransitive|ambitransitive|formal|informal|archaic|obsolete|rare|chiefly[^)]*|usually[^)]*|often[^)]*|figuratively|literally|pejorative|derogatory|humorous|colloquial|slang|someone\s+or\s+something|of\s+a\s+[^)]*|especially\s+[^)]*)\)\s*/gi, ' ')
-      .replace(/\s*\[(with object|no object|usually[^\]]*)\]\s*/gi, ' ')
-      .replace(/\s*\([^)]*\)\s*/g, ' ')
-      .replace(/\s*\[[^\]]*\]\s*/g, ' ')
-      .replace(/\s{2,}/g, ' ')
+  function cleanJsonText(rawText) {
+    if (!rawText) return '';
+    return rawText
+      .replace(/^```json\s*/i, '')
+      .replace(/^```\s*/i, '')
+      .replace(/\s*```$/i, '')
       .trim();
-
-    // If there are multiple clauses separated by semicolons, choose the simplest and most direct clause
-    if (cleaned.includes(';')) {
-      const parts = cleaned.split(';').map(p => p.trim()).filter(Boolean);
-      const shortPart = parts.find(p => p.length >= 8 && p.length <= 75) || parts[0];
-      if (shortPart) cleaned = shortPart;
-    }
-
-    // Simplify dictionary-style verbose jargon
-    cleaned = cleaned
-      .replace(/^to regard\s+(as\s+)?(horrifying|detestable|repugnant|loathsome)/i, 'To hate or detest deeply')
-      .replace(/^to regard\s+as\s+/i, 'To consider as ')
-      .replace(/^to feel\s+great\s+repugnance\s+toward/i, 'To hate or dislike strongly')
-      .replace(/^characterized\s+by\s+(or\s+exhibiting\s+)?/i, 'Showing ')
-      .replace(/^the quality or state of being\s+/i, 'The state of being ')
-      .replace(/^an act or instance of\s+/i, 'The act of ')
-      .replace(/^in a manner that is\s+/i, 'In a ')
-      .replace(/^relating to or consisting of\s+/i, 'Related to ')
-      .replace(/^to accept something reluctantly but without protest/i, 'To agree to something without arguing')
-      .replace(/\s{2,}/g, ' ')
-      .trim();
-
-    if (cleaned) {
-      cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
-      if (!/[.!?]$/.test(cleaned)) cleaned += '.';
-    }
-    return cleaned;
-  }
-
-  function generateContextualSentence(word, pos, meaning) {
-    const p = (pos || '').toLowerCase();
-    const w = (word || '').trim().toLowerCase();
-    const m = (meaning || '').toLowerCase();
-
-    if (m.includes('touch') || m.includes('stroke') || m.includes('fondle') || m.includes('caress') || m.includes('affection')) {
-      return `The cool evening breeze was like a soft hand ${w} her face.`;
-    }
-    if (m.includes('hate') || m.includes('detest') || m.includes('repugnan') || m.includes('loathe') || m.includes('disgust') || m.includes('abhor')) {
-      return `She truly ${w}s any form of cruelty or unfair treatment.`;
-    }
-    if (m.includes('fleeting') || m.includes('short time') || m.includes('transient') || m.includes('temporary')) {
-      return `The beauty of the morning rainbow was delightfully ${w}.`;
-    }
-    if (m.includes('everywhere') || m.includes('omnipresent') || m.includes('pervasive') || m.includes('widespread')) {
-      return `Smartphones have become ${w} in modern daily life.`;
-    }
-    if (m.includes('chance') || m.includes('luck') || m.includes('fortunate') || m.includes('accident')) {
-      return `Meeting my mentor at that quiet café was pure ${w}.`;
-    }
-    if (m.includes('agree') || m.includes('reluctant') || m.includes('consent') || m.includes('submit') || m.includes('protest')) {
-      return `She decided to ${w} to the team's decision to maintain harmony.`;
-    }
-    if (m.includes('anomaly') || m.includes('deviation') || m.includes('irregular') || m.includes('departing')) {
-      return `Her sharp reaction was an unusual ${w} from her calm character.`;
-    }
-    if (m.includes('sweet') || m.includes('musical') || m.includes('smooth') || m.includes('pleasant')) {
-      return `The narrator has a warm and ${w} voice that charms listeners.`;
-    }
-    if (m.includes('unable to be expressed') || m.includes('indescribable') || m.includes('too great')) {
-      return `Looking across the open ocean brought her a sense of ${w} peace.`;
-    }
-    if (m.includes('recover') || m.includes('withstand') || m.includes('tough') || m.includes('strong')) {
-      return `The community proved remarkably ${w} following the harsh winter.`;
-    }
-    if (m.includes('express') || m.includes('fluent') || m.includes('persuasive')) {
-      return `Her ${w} keynote speech on innovation received high praise.`;
-    }
-
-    if (p.includes('adj')) {
-      return `The team offered a remarkably ${w} perspective on the matter.`;
-    } else if (p.includes('verb')) {
-      return `Scientists worked hard to ${w} the cause of the problem.`;
-    } else if (p.includes('adv')) {
-      return `She explained her ideas ${w} during the final presentation.`;
-    } else if (p.includes('idiom') || p.includes('phrasal')) {
-      return `It is helpful to ${w} when dealing with difficult tasks.`;
-    } else {
-      return `Learning the concept of ${w} opened new insights for the students.`;
-    }
-  }
-
-  function generateSmartFallback(word) {
-    const clean = word.trim();
-    return {
-      word: clean,
-      pos: 'Noun',
-      meaning: `A vocabulary word related to ${clean.toLowerCase()}.`,
-      sentence: generateContextualSentence(clean, 'Noun', ''),
-      notes: ''
-    };
-  }
-
-  async function fetchFromDictionaryApi(lemma, originalWord) {
-    try {
-      const res = await fetchWithTimeout(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(lemma.toLowerCase())}`, {}, 2200);
-      if (!res.ok) return null;
-      const json = await res.json();
-      if (!Array.isArray(json) || json.length === 0) return null;
-
-      const entry = json[0];
-      let chosenMeaning = '';
-      let chosenPos = 'Noun';
-      let chosenSentence = '';
-      const synList = [];
-
-      if (Array.isArray(entry.meanings)) {
-        for (const m of entry.meanings) {
-          const posRaw = (m.partOfSpeech || '').toLowerCase();
-          let mappedPos = 'Noun';
-          if (posRaw.includes('verb')) mappedPos = 'Verb';
-          else if (posRaw.includes('adj')) mappedPos = 'Adjective';
-          else if (posRaw.includes('adv')) mappedPos = 'Adverb';
-          else if (posRaw.includes('idiom') || posRaw.includes('phrase')) mappedPos = 'Idiom';
-
-          if (Array.isArray(m.synonyms)) synList.push(...m.synonyms);
-
-          if (Array.isArray(m.definitions)) {
-            for (const d of m.definitions) {
-              const cleanedDef = simplifyDefinitionText(d.definition);
-              if (!isTrivialDefinition(cleanedDef, lemma)) {
-                if (!chosenMeaning) {
-                  chosenMeaning = cleanedDef;
-                  chosenPos = mappedPos;
-                }
-                if (d.example && !chosenSentence) {
-                  chosenSentence = d.example;
-                  chosenPos = mappedPos;
-                }
-              }
-              if (Array.isArray(d.synonyms)) synList.push(...d.synonyms);
-            }
-          }
-        }
-      }
-
-      if (!chosenMeaning || isTrivialDefinition(chosenMeaning, lemma)) return null;
-
-      if (originalWord.toLowerCase().endsWith('ing') && lemma !== originalWord.toLowerCase() && chosenMeaning.startsWith('To ')) {
-        chosenMeaning = chosenMeaning.replace(/^To\s+([a-z]+)/i, (m, v) => {
-          if (v.endsWith('e')) return v.slice(0, -1) + 'ing';
-          return v + 'ing';
-        });
-      }
-
-      if (chosenSentence) {
-        chosenSentence = chosenSentence.trim();
-        if (!/[.!?]$/.test(chosenSentence)) chosenSentence += '.';
-        chosenSentence = chosenSentence.charAt(0).toUpperCase() + chosenSentence.slice(1);
-      } else {
-        chosenSentence = generateContextualSentence(originalWord, chosenPos, chosenMeaning);
-      }
-
-      const uniqueSyns = Array.from(new Set(synList.filter(Boolean))).slice(0, 4);
-      const notesText = uniqueSyns.length > 0 ? `Synonyms: ${uniqueSyns.join(', ')}` : '';
-
-      return {
-        word: originalWord,
-        pos: chosenPos,
-        meaning: chosenMeaning,
-        sentence: chosenSentence,
-        notes: notesText
-      };
-    } catch (e) {
-      return null;
-    }
-  }
-
-  async function fetchFromDatamuse(lemma, originalWord) {
-    try {
-      const res = await fetchWithTimeout(`https://api.datamuse.com/words?sp=${encodeURIComponent(lemma.toLowerCase())}&md=dp&max=3`, {}, 1800);
-      if (!res.ok) return null;
-      const list = await res.json();
-      if (!Array.isArray(list) || list.length === 0) return null;
-
-      for (const item of list) {
-        if (Array.isArray(item.defs) && item.defs.length > 0) {
-          for (const rawDef of item.defs) {
-            const parts = rawDef.split('\t');
-            let pos = 'Noun';
-            if (parts[0] === 'v') pos = 'Verb';
-            else if (parts[0] === 'adj') pos = 'Adjective';
-            else if (parts[0] === 'adv') pos = 'Adverb';
-            let meaning = simplifyDefinitionText(parts[1] || rawDef);
-
-            if (!isTrivialDefinition(meaning, lemma)) {
-              if (originalWord.toLowerCase().endsWith('ing') && lemma !== originalWord.toLowerCase() && meaning.startsWith('To ')) {
-                meaning = meaning.replace(/^To\s+([a-z]+)/i, (m, v) => {
-                  if (v.endsWith('e')) return v.slice(0, -1) + 'ing';
-                  return v + 'ing';
-                });
-              }
-
-              return {
-                word: originalWord,
-                pos: pos,
-                meaning: meaning,
-                sentence: generateContextualSentence(originalWord, pos, meaning),
-                notes: ''
-              };
-            }
-          }
-        }
-      }
-      return null;
-    } catch (e) {
-      return null;
-    }
-  }
-
-  async function fetchFromGemini(word, apiKey) {
-    const promptText = `Provide English vocabulary details for the word or expression "${word}".
-Keep the meaning EXTREMELY SIMPLE, short, and clear (max 6-12 words in plain everyday English for easy memorization, avoiding academic jargon or circular definitions).
-Return ONLY a raw valid JSON object with NO markdown backticks, in this exact format:
-{
-  "pos": "Noun" | "Verb" | "Adjective" | "Adverb" | "Idiom" | "Phrasal Verb" | "Other",
-  "meaning": "simple plain English definition in 6-12 words",
-  "sentence": "a clear and natural example sentence using the word",
-  "synonyms": "3-4 simple comma-separated synonyms"
-}`;
-
-    const res = await fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(apiKey.trim())}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: promptText }] }]
-      })
-    }, 2800);
-
-    if (res.ok) {
-      const data = await res.json();
-      let rawJson = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      rawJson = rawJson.replace(/```json/gi, '').replace(/```/g, '').trim();
-      const parsed = JSON.parse(rawJson);
-      if (parsed && parsed.meaning) {
-        return {
-          word: word,
-          pos: parsed.pos || 'Noun',
-          meaning: simplifyDefinitionText(parsed.meaning),
-          sentence: parsed.sentence || generateContextualSentence(word, parsed.pos, parsed.meaning),
-          notes: parsed.synonyms ? `Synonyms: ${parsed.synonyms}` : ''
-        };
-      }
-    }
-    return null;
   }
 
   async function fetchWordDetailsAI(rawWord) {
     const word = (rawWord || '').trim();
     if (!word) return null;
 
-    // 1. Instant Cache Check (< 1ms)
+    // 1. Instant Cache Check (< 1ms for previously AI-generated words)
     const cached = getCachedWord(word);
     if (cached) {
       return { ...cached, word };
     }
 
-    // 2. Instant Curated Simple Definitions & Root Lemma Check (0ms)
-    const curatedMatch = resolveCuratedOrLemma(word);
-    if (curatedMatch) {
-      setCachedWord(word, curatedMatch);
-      return curatedMatch;
-    }
+    const savedApiKey = (localStorage.getItem(GEMINI_KEY_STORAGE) || geminiApiKey || '').trim();
 
-    const savedApiKey = localStorage.getItem(GEMINI_KEY_STORAGE) || geminiApiKey;
-
-    // 3. Google Gemini Generative AI (if user configured key, fast 2.8s timeout)
-    if (savedApiKey && savedApiKey.trim()) {
-      try {
-        const geminiResult = await fetchFromGemini(word, savedApiKey);
-        if (geminiResult) {
-          setCachedWord(word, geminiResult);
-          return geminiResult;
-        }
-      } catch (err) {
-        console.warn('Gemini API call timed out or failed, falling back to parallel dictionary lookup:', err);
+    // If no API key is configured, prompt the user immediately
+    if (!savedApiKey) {
+      showToast('🔑 Please paste your Google Gemini API Key in Settings (⚙️) to generate real AI definitions & sentences!', 'warning');
+      openSettingsModal();
+      if (geminiApiKeyInput) {
+        setTimeout(() => geminiApiKeyInput.focus(), 250);
       }
+      return null;
     }
 
-    // 4. Ultra-Fast Parallel Multi-API Lookup (DictionaryAPI + Datamuse concurrently)
-    const lemmasToTry = getCandidateLemmas(word).slice(0, 3);
-    const lookupPromises = [];
-
-    for (const lemma of lemmasToTry) {
-      lookupPromises.push(fetchFromDictionaryApi(lemma, word));
-      lookupPromises.push(fetchFromDatamuse(lemma, word));
-    }
+    // 2. Pure Gemini Generative AI Request (1–2 seconds response time)
+    const promptText = `You are an expert English vocabulary coach. Provide rich vocabulary information for the word or expression "${word}".
+Return ONLY a valid JSON object matching this schema:
+{
+  "pos": "Noun" | "Verb" | "Adjective" | "Adverb" | "Idiom" | "Phrasal Verb",
+  "meaning": "a crisp, natural, easy-to-understand definition in 6-12 words of plain everyday English (avoiding circular words or textbook jargon)",
+  "sentence": "a vivid, natural, and realistic modern example sentence that clearly demonstrates its contextual meaning in everyday life",
+  "synonyms": "3-4 simple, accurate comma-separated synonyms"
+}`;
 
     try {
-      const results = await Promise.allSettled(lookupPromises);
-      for (const res of results) {
-        if (res.status === 'fulfilled' && res.value && res.value.meaning) {
-          setCachedWord(word, res.value);
-          return res.value;
+      const res = await fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(savedApiKey)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: promptText }] }],
+          generationConfig: {
+            responseMimeType: 'application/json',
+            temperature: 0.7,
+            maxOutputTokens: 250
+          }
+        })
+      }, 4000);
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        const errMsg = errorData.error?.message || `HTTP ${res.status}`;
+        console.error('Gemini API Error:', errMsg);
+        if (res.status === 400 || res.status === 403 || res.status === 401) {
+          showToast('⚠️ Invalid Gemini API Key. Please check your key in Settings (⚙️).', 'error');
+          openSettingsModal();
+        } else {
+          showToast(`Gemini API Error: ${errMsg}`, 'error');
+        }
+        return null;
+      }
+
+      const data = await res.json();
+      let rawJson = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      rawJson = cleanJsonText(rawJson);
+
+      if (rawJson) {
+        const parsed = JSON.parse(rawJson);
+        if (parsed && parsed.meaning && parsed.sentence) {
+          let cleanSentence = (parsed.sentence || '').trim();
+          if (!/[.!?]$/.test(cleanSentence)) cleanSentence += '.';
+          cleanSentence = cleanSentence.charAt(0).toUpperCase() + cleanSentence.slice(1);
+
+          let cleanMeaning = (parsed.meaning || '').trim();
+          if (!/[.!?]$/.test(cleanMeaning)) cleanMeaning += '.';
+          cleanMeaning = cleanMeaning.charAt(0).toUpperCase() + cleanMeaning.slice(1);
+
+          const result = {
+            word: word,
+            pos: parsed.pos || 'Noun',
+            meaning: cleanMeaning,
+            sentence: cleanSentence,
+            notes: parsed.synonyms ? `Synonyms: ${parsed.synonyms}` : ''
+          };
+
+          setCachedWord(word, result);
+          return result;
         }
       }
     } catch (err) {
-      // Fall through to fallback generator
+      console.error('Gemini Generative AI failed:', err);
+      if (err.name === 'AbortError') {
+        showToast('⚠️ AI request timed out. Please check your network.', 'error');
+      } else {
+        showToast('⚠️ Could not generate word details with AI.', 'error');
+      }
     }
 
-    // 5. Instant Smart Fallback Generator (0ms)
-    const fallback = generateSmartFallback(word);
-    setCachedWord(word, fallback);
-    return fallback;
+    return null;
   }
 
   /* ==========================================================================
