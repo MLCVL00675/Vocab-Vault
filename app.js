@@ -1304,7 +1304,9 @@
   }
 
   const GEMINI_MODEL_STORAGE = 'vocabvault_working_gemini_endpoint';
-  let workingGeminiEndpoint = localStorage.getItem(GEMINI_MODEL_STORAGE) || '';
+  // Clear any past invalid cached endpoint on script load
+  localStorage.removeItem(GEMINI_MODEL_STORAGE);
+  let workingGeminiEndpoint = '';
 
   function parseAiJsonResponse(rawText) {
     if (!rawText) return null;
@@ -1326,44 +1328,46 @@
   async function resolveGeminiEndpoint(apiKey) {
     if (workingGeminiEndpoint) return workingGeminiEndpoint;
 
-    // 1. Query Google's ModelService ListModels API to discover exact available models
-    try {
-      const listRes = await fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`, {
-        method: 'GET'
-      }, 3500);
+    // 1. Query Google's ModelService ListModels API across both v1 and v1beta
+    for (const apiVer of ['v1beta', 'v1']) {
+      try {
+        const listRes = await fetchWithTimeout(`https://generativelanguage.googleapis.com/${apiVer}/models?key=${encodeURIComponent(apiKey)}`, {
+          method: 'GET'
+        }, 3500);
 
-      if (listRes.ok) {
-        const listData = await listRes.json();
-        const models = (listData.models || []).filter((m) => {
-          const methods = m.supportedGenerationMethods || [];
-          return methods.includes('generateContent') || methods.includes('generate_content');
-        });
+        if (listRes.ok) {
+          const listData = await listRes.json();
+          const models = (listData.models || []).filter((m) => {
+            const methods = m.supportedGenerationMethods || [];
+            return methods.includes('generateContent') || methods.includes('generate_content');
+          });
 
-        if (models.length > 0) {
-          // Priority ranking for speed and quality
-          const chosen = models.find((m) => m.name.includes('gemini-2.0-flash') && !m.name.includes('lite') && !m.name.includes('exp'))
-                      || models.find((m) => m.name.includes('gemini-1.5-flash') && !m.name.includes('8b'))
-                      || models.find((m) => m.name.includes('gemini-2.0'))
-                      || models.find((m) => m.name.includes('gemini-1.5'))
-                      || models.find((m) => m.name.includes('flash'))
-                      || models[0];
+          if (models.length > 0) {
+            const chosen = models.find((m) => m.name.includes('gemini-2.0-flash') && !m.name.includes('lite') && !m.name.includes('exp'))
+                        || models.find((m) => m.name.includes('gemini-1.5-flash') && !m.name.includes('8b'))
+                        || models.find((m) => m.name.includes('gemini-2.5'))
+                        || models.find((m) => m.name.includes('gemini-2.0'))
+                        || models.find((m) => m.name.includes('gemini-1.5'))
+                        || models.find((m) => m.name.includes('flash'))
+                        || models.find((m) => m.name.includes('pro'))
+                        || models[0];
 
-          if (chosen && chosen.name) {
-            // chosen.name is e.g. "models/gemini-2.0-flash"
-            const endpoint = `https://generativelanguage.googleapis.com/v1beta/${chosen.name}:generateContent`;
-            workingGeminiEndpoint = endpoint;
-            localStorage.setItem(GEMINI_MODEL_STORAGE, endpoint);
-            console.log('VocabVault: Resolved working Gemini model ->', chosen.name);
-            return endpoint;
+            if (chosen && chosen.name) {
+              const cleanModelName = chosen.name.replace(/^models\//, '');
+              const endpoint = `https://generativelanguage.googleapis.com/${apiVer}/models/${cleanModelName}:generateContent`;
+              workingGeminiEndpoint = endpoint;
+              localStorage.setItem(GEMINI_MODEL_STORAGE, endpoint);
+              console.log(`VocabVault: Resolved working Gemini endpoint [${apiVer}] ->`, endpoint);
+              return endpoint;
+            }
           }
         }
+      } catch (err) {
+        console.warn(`VocabVault: ListModels query on ${apiVer} error:`, err);
       }
-    } catch (err) {
-      console.warn('VocabVault: ListModels query error, using fallback endpoints:', err);
     }
 
-    // Default fast candidate if ListModels could not be reached
-    return 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+    return null;
   }
 
   async function fetchWordDetailsAI(rawWord) {
@@ -1398,14 +1402,16 @@ Return ONLY a valid JSON object matching this schema:
   "synonyms": "3-4 simple, accurate comma-separated synonyms"
 }`;
 
-    const endpoint = await resolveGeminiEndpoint(savedApiKey);
+    const resolved = await resolveGeminiEndpoint(savedApiKey);
 
     const candidates = [
-      endpoint,
+      resolved,
       'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
+      'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent',
       'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent',
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent'
-    ].filter((v, i, a) => a.indexOf(v) === i);
+      'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-pro:generateContent',
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent'
+    ].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i);
 
     let lastErrMsg = '';
 
