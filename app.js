@@ -1303,6 +1303,19 @@
       .trim();
   }
 
+  const GEMINI_MODEL_STORAGE = 'vocabvault_working_gemini_endpoint';
+  let workingGeminiEndpoint = localStorage.getItem(GEMINI_MODEL_STORAGE) || '';
+
+  const GEMINI_CANDIDATE_ENDPOINTS = [
+    'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent',
+    'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
+    'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent',
+    'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent',
+    'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent',
+    'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent',
+    'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent'
+  ];
+
   async function fetchWordDetailsAI(rawWord) {
     const word = (rawWord || '').trim();
     if (!word) return null;
@@ -1335,67 +1348,77 @@ Return ONLY a valid JSON object matching this schema:
   "synonyms": "3-4 simple, accurate comma-separated synonyms"
 }`;
 
-    try {
-      const res = await fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(savedApiKey)}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: promptText }] }],
-          generationConfig: {
-            responseMimeType: 'application/json',
-            temperature: 0.7,
-            maxOutputTokens: 250
+    const endpointsToTry = workingGeminiEndpoint
+      ? [workingGeminiEndpoint, ...GEMINI_CANDIDATE_ENDPOINTS.filter((e) => e !== workingGeminiEndpoint)]
+      : GEMINI_CANDIDATE_ENDPOINTS;
+
+    let lastErrMsg = '';
+
+    for (const endpoint of endpointsToTry) {
+      try {
+        const res = await fetchWithTimeout(`${endpoint}?key=${encodeURIComponent(savedApiKey)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: promptText }] }],
+            generationConfig: {
+              responseMimeType: 'application/json',
+              temperature: 0.7,
+              maxOutputTokens: 250
+            }
+          })
+        }, 3500);
+
+        if (res.ok) {
+          const data = await res.json();
+          let rawJson = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          rawJson = cleanJsonText(rawJson);
+
+          if (rawJson) {
+            const parsed = JSON.parse(rawJson);
+            if (parsed && parsed.meaning && parsed.sentence) {
+              workingGeminiEndpoint = endpoint;
+              localStorage.setItem(GEMINI_MODEL_STORAGE, endpoint);
+
+              let cleanSentence = (parsed.sentence || '').trim();
+              if (!/[.!?]$/.test(cleanSentence)) cleanSentence += '.';
+              cleanSentence = cleanSentence.charAt(0).toUpperCase() + cleanSentence.slice(1);
+
+              let cleanMeaning = (parsed.meaning || '').trim();
+              if (!/[.!?]$/.test(cleanMeaning)) cleanMeaning += '.';
+              cleanMeaning = cleanMeaning.charAt(0).toUpperCase() + cleanMeaning.slice(1);
+
+              const result = {
+                word: word,
+                pos: parsed.pos || 'Noun',
+                meaning: cleanMeaning,
+                sentence: cleanSentence,
+                notes: parsed.synonyms ? `Synonyms: ${parsed.synonyms}` : ''
+              };
+
+              setCachedWord(word, result);
+              return result;
+            }
           }
-        })
-      }, 4000);
-
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        const errMsg = errorData.error?.message || `HTTP ${res.status}`;
-        console.error('Gemini API Error:', errMsg);
-        if (res.status === 400 || res.status === 403 || res.status === 401) {
-          showToast('⚠️ Invalid Gemini API Key. Please check your key in Settings (⚙️).', 'error');
-          openSettingsModal();
         } else {
-          showToast(`Gemini API Error: ${errMsg}`, 'error');
+          const errorData = await res.json().catch(() => ({}));
+          lastErrMsg = errorData.error?.message || `HTTP ${res.status}`;
+          if (res.status === 400 || res.status === 403 || res.status === 401) {
+            if (lastErrMsg.toLowerCase().includes('key') || lastErrMsg.toLowerCase().includes('credential')) {
+              showToast('⚠️ Invalid Gemini API Key. Please check your key in Settings (⚙️).', 'error');
+              openSettingsModal();
+              return null;
+            }
+          }
+          // For other errors like 404 (model not found), automatically try the next candidate endpoint
         }
-        return null;
+      } catch (err) {
+        lastErrMsg = err.message;
       }
+    }
 
-      const data = await res.json();
-      let rawJson = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      rawJson = cleanJsonText(rawJson);
-
-      if (rawJson) {
-        const parsed = JSON.parse(rawJson);
-        if (parsed && parsed.meaning && parsed.sentence) {
-          let cleanSentence = (parsed.sentence || '').trim();
-          if (!/[.!?]$/.test(cleanSentence)) cleanSentence += '.';
-          cleanSentence = cleanSentence.charAt(0).toUpperCase() + cleanSentence.slice(1);
-
-          let cleanMeaning = (parsed.meaning || '').trim();
-          if (!/[.!?]$/.test(cleanMeaning)) cleanMeaning += '.';
-          cleanMeaning = cleanMeaning.charAt(0).toUpperCase() + cleanMeaning.slice(1);
-
-          const result = {
-            word: word,
-            pos: parsed.pos || 'Noun',
-            meaning: cleanMeaning,
-            sentence: cleanSentence,
-            notes: parsed.synonyms ? `Synonyms: ${parsed.synonyms}` : ''
-          };
-
-          setCachedWord(word, result);
-          return result;
-        }
-      }
-    } catch (err) {
-      console.error('Gemini Generative AI failed:', err);
-      if (err.name === 'AbortError') {
-        showToast('⚠️ AI request timed out. Please check your network.', 'error');
-      } else {
-        showToast('⚠️ Could not generate word details with AI.', 'error');
-      }
+    if (lastErrMsg) {
+      showToast(`⚠️ Gemini API Error: ${lastErrMsg}`, 'error');
     }
 
     return null;
