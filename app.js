@@ -268,6 +268,7 @@
   const settingsBtn = document.getElementById('settingsBtn');
   const settingsModalBackdrop = document.getElementById('settingsModalBackdrop');
   const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+  const saveSettingsDoneBtn = document.getElementById('saveSettingsDoneBtn');
   const exportDataBtn = document.getElementById('exportDataBtn');
   const importDataBtn = document.getElementById('importDataBtn');
   const importFileInput = document.getElementById('importFileInput');
@@ -2169,6 +2170,16 @@ Return ONLY a valid JSON object matching this schema:
     if (themeToggleBtn) themeToggleBtn.addEventListener('click', toggleTheme);
     if (settingsBtn) settingsBtn.addEventListener('click', openSettingsModal);
     if (closeSettingsBtn) closeSettingsBtn.addEventListener('click', closeSettingsModal);
+    if (saveSettingsDoneBtn) {
+      saveSettingsDoneBtn.addEventListener('click', () => {
+        if (geminiApiKeyInput) {
+          geminiApiKey = geminiApiKeyInput.value.trim();
+          localStorage.setItem(GEMINI_KEY_STORAGE, geminiApiKey);
+        }
+        closeSettingsModal();
+        showToast('Settings saved successfully!', 'success');
+      });
+    }
     if (settingsModalBackdrop) {
       settingsModalBackdrop.addEventListener('click', (e) => {
         if (e.target === settingsModalBackdrop) closeSettingsModal();
