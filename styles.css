@@ -2140,3 +2140,29 @@ a {
   border-radius: var(--radius-full);
 }
 
+/* AI Key Pill Button in Quick Add Header */
+.ai-key-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  padding: 4px 11px;
+  background: rgba(99, 102, 241, 0.12);
+  border: 1px solid rgba(99, 102, 241, 0.32);
+  border-radius: var(--radius-full);
+  color: var(--accent-indigo);
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.ai-key-pill-btn:hover {
+  background: rgba(99, 102, 241, 0.22);
+  border-color: var(--accent-indigo);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25);
+}
+
