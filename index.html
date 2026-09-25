@@ -375,7 +375,10 @@
             </div>
             <span class="streak-badge" id="fcStreakScoreBadge">0/3</span>
           </div>
-          <span class="card-status-pill-small" id="fcCardStatusPill">Learning</span>
+          <div class="fc-header-right-badges">
+            <span class="graded-today-pill" id="fcGradedTodayPill" style="display: none;">📅 Graded Today</span>
+            <span class="card-status-pill-small" id="fcCardStatusPill">Learning</span>
+          </div>
         </div>
 
         <div class="deck-container">
@@ -460,7 +463,7 @@
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
             </svg>
-            <span>Forgot ✕</span>
+            <span>Forgot</span>
             <kbd>1</kbd>
           </button>
 
@@ -472,7 +475,7 @@
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="20 6 9 17 4 12"></polyline>
             </svg>
-            <span>Remembered ✓</span>
+            <span>Remembered</span>
             <kbd>2</kbd>
           </button>
         </div>
@@ -494,6 +497,50 @@
           </button>
         </div>
 
+      </div>
+
+      <!-- Completion Stage Screen -->
+      <div class="flashcard-completion-stage" id="flashcardCompletionStage" style="display: none;">
+        <div class="fc-complete-card">
+          <div class="fc-complete-badge">
+            <span class="fc-complete-icon">🎉</span>
+          </div>
+          <h3 class="fc-complete-title">Session Complete!</h3>
+          <p class="fc-complete-subtitle">You've successfully practiced all words in this session.</p>
+
+          <div class="fc-complete-stats-grid">
+            <div class="fc-stat-box">
+              <div class="fc-stat-number" id="fcStatTotal">0</div>
+              <div class="fc-stat-label">Reviewed</div>
+            </div>
+            <div class="fc-stat-box stat-remembered">
+              <div class="fc-stat-number" id="fcStatRemembered">0</div>
+              <div class="fc-stat-label">Remembered ✓</div>
+            </div>
+            <div class="fc-stat-box stat-forgot">
+              <div class="fc-stat-number" id="fcStatForgot">0</div>
+              <div class="fc-stat-label">Forgot ✕</div>
+            </div>
+            <div class="fc-stat-box stat-mastered">
+              <div class="fc-stat-number" id="fcStatMastered">0</div>
+              <div class="fc-stat-label">Mastered 🟢</div>
+            </div>
+          </div>
+
+          <div class="fc-complete-actions">
+            <button id="fcPracticeAgainBtn" class="btn btn-secondary">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path><path d="M3 21v-5h5"></path></svg>
+              Practice Again
+            </button>
+            <button id="fcReviewMissedBtn" class="btn btn-warning" style="display: none;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+              Review Missed (<span id="fcMissedCount">0</span>)
+            </button>
+            <button id="fcDoneBtn" class="btn btn-primary">
+              Done
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </div>

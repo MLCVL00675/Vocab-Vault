@@ -238,6 +238,19 @@
   const fcCurrentIndexEl = document.getElementById('fcCurrentIndex');
   const fcTotalCountEl = document.getElementById('fcTotalCount');
 
+  // Flashcard Completion Stage & Daily Lock DOM
+  const flashcardDeckStage = document.getElementById('flashcardDeckStage');
+  const flashcardCompletionStage = document.getElementById('flashcardCompletionStage');
+  const fcGradedTodayPill = document.getElementById('fcGradedTodayPill');
+  const fcStatTotal = document.getElementById('fcStatTotal');
+  const fcStatRemembered = document.getElementById('fcStatRemembered');
+  const fcStatForgot = document.getElementById('fcStatForgot');
+  const fcStatMastered = document.getElementById('fcStatMastered');
+  const fcPracticeAgainBtn = document.getElementById('fcPracticeAgainBtn');
+  const fcReviewMissedBtn = document.getElementById('fcReviewMissedBtn');
+  const fcMissedCount = document.getElementById('fcMissedCount');
+  const fcDoneBtn = document.getElementById('fcDoneBtn');
+
   // Word Modal DOM
   const addWordBtn = document.getElementById('addWordBtn');
   const wordModalBackdrop = document.getElementById('wordModalBackdrop');
@@ -713,6 +726,7 @@
           <div class="streak-pips" title="Mastery Streak: ${streak} ${streak === 1 ? 'time' : 'times'}">${pipsHtml}</div>
           <span class="streak-count-text ${isMastered ? 'mastered' : ''}">${streak} ${streak === 1 ? 'time' : 'times'}</span>
           <span class="wrong-count-text ${wrongCount > 0 ? '' : 'hidden-zero'}" title="Forgotten: ${wrongCount} ${wrongCount === 1 ? 'time' : 'times'}">✕ ${wrongCount} ${wrongCount === 1 ? 'time' : 'times'}</span>
+          ${item.lastGradedDate === getTodayISO() ? `<span class="graded-today-tag ${item.lastGradedResult === 'remembered' ? 'tag-right' : 'tag-wrong'}" title="Already graded today (${item.lastGradedResult === 'remembered' ? '✓ Remembered' : '✕ Forgot'})">📅 Graded today ${item.lastGradedResult === 'remembered' ? '✓' : '✕'}</span>` : ''}
         </div>
         
         <div class="card-recall-actions">
@@ -861,6 +875,22 @@
       wrongCountText.classList.toggle('hidden-zero', wrongCount === 0);
     }
 
+    // In-place update of graded today tag
+    let tagEl = cardEl.querySelector('.graded-today-tag');
+    const isGradedToday = item.lastGradedDate === getTodayISO();
+    if (isGradedToday) {
+      if (!tagEl) {
+        tagEl = document.createElement('span');
+        const metaWrap = cardEl.querySelector('.streak-meta-wrap');
+        if (metaWrap) metaWrap.appendChild(tagEl);
+      }
+      tagEl.className = `graded-today-tag ${item.lastGradedResult === 'remembered' ? 'tag-right' : 'tag-wrong'}`;
+      tagEl.title = `Already graded today (${item.lastGradedResult === 'remembered' ? '✓ Remembered' : '✕ Forgot'})`;
+      tagEl.textContent = `📅 Graded today ${item.lastGradedResult === 'remembered' ? '✓' : '✕'}`;
+    } else if (tagEl) {
+      tagEl.remove();
+    }
+
     // If an exclusive status filter is active, smoothly animate out if category changed
     if (statusFilter === 'learning' && isMastered) {
       cardEl.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
@@ -875,9 +905,201 @@
     }
   }
 
+  /* ==========================================================================
+     Synthesized Web Audio Sound Effects (Zero Latency & Offline)
+     ========================================================================== */
+  const SoundFX = (() => {
+    let ctx = null;
+
+    function getContext() {
+      try {
+        if (!ctx) {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (AudioCtx) {
+            ctx = new AudioCtx();
+          }
+        }
+        if (ctx && ctx.state === 'suspended') {
+          ctx.resume().catch(() => {});
+        }
+        return ctx;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    return {
+      playCorrect() {
+        const c = getContext();
+        if (!c) return;
+        const now = c.currentTime;
+
+        // Note 1: E5 (659.25 Hz)
+        const osc1 = c.createOscillator();
+        const gain1 = c.createGain();
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(659.25, now);
+        gain1.gain.setValueAtTime(0, now);
+        gain1.gain.linearRampToValueAtTime(0.18, now + 0.02);
+        gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+        osc1.connect(gain1);
+        gain1.connect(c.destination);
+        osc1.start(now);
+        osc1.stop(now + 0.19);
+
+        // Note 2: B5 (987.77 Hz)
+        const osc2 = c.createOscillator();
+        const gain2 = c.createGain();
+        osc2.type = 'sine';
+        osc2.frequency.setValueAtTime(987.77, now + 0.08);
+        gain2.gain.setValueAtTime(0, now + 0.08);
+        gain2.gain.linearRampToValueAtTime(0.22, now + 0.10);
+        gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
+        osc2.connect(gain2);
+        gain2.connect(c.destination);
+        osc2.start(now + 0.08);
+        osc2.stop(now + 0.33);
+      },
+
+      playWrong() {
+        const c = getContext();
+        if (!c) return;
+        const now = c.currentTime;
+
+        // Gentle low double-tone boop
+        const osc = c.createOscillator();
+        const gain = c.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(240, now);
+        osc.frequency.exponentialRampToValueAtTime(140, now + 0.22);
+
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(0.2, now + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+
+        osc.connect(gain);
+        gain.connect(c.destination);
+        osc.start(now);
+        osc.stop(now + 0.23);
+      },
+
+      playMastered() {
+        const c = getContext();
+        if (!c) return;
+        const now = c.currentTime;
+        // 4-note victory flourish: C5, E5, G5, C6
+        const notes = [523.25, 659.25, 783.99, 1046.5];
+        notes.forEach((freq, idx) => {
+          const osc = c.createOscillator();
+          const gain = c.createGain();
+          const noteStart = now + idx * 0.07;
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, noteStart);
+          gain.gain.setValueAtTime(0, noteStart);
+          gain.gain.linearRampToValueAtTime(0.18, noteStart + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001, noteStart + 0.35);
+          osc.connect(gain);
+          gain.connect(c.destination);
+          osc.start(noteStart);
+          osc.stop(noteStart + 0.36);
+        });
+      },
+
+      playFlip() {
+        const c = getContext();
+        if (!c) return;
+        const now = c.currentTime;
+
+        // Crisp card flick/whoosh: short pitch drop
+        const osc = c.createOscillator();
+        const gain = c.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(420, now);
+        osc.frequency.exponentialRampToValueAtTime(180, now + 0.09);
+
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+
+        osc.connect(gain);
+        gain.connect(c.destination);
+        osc.start(now);
+        osc.stop(now + 0.1);
+      },
+
+      playNav() {
+        const c = getContext();
+        if (!c) return;
+        const now = c.currentTime;
+
+        // Short subtle tick/pop
+        const osc = c.createOscillator();
+        const gain = c.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(620, now);
+        gain.gain.setValueAtTime(0.1, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.045);
+
+        osc.connect(gain);
+        gain.connect(c.destination);
+        osc.start(now);
+        osc.stop(now + 0.05);
+      },
+
+      playShuffle() {
+        const c = getContext();
+        if (!c) return;
+        const now = c.currentTime;
+
+        // 4 quick flutter clicks
+        [0, 0.035, 0.07, 0.105].forEach((offset, idx) => {
+          const osc = c.createOscillator();
+          const gain = c.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(450 + idx * 60, now + offset);
+          gain.gain.setValueAtTime(0.08, now + offset);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.03);
+          osc.connect(gain);
+          gain.connect(c.destination);
+          osc.start(now + offset);
+          osc.stop(now + offset + 0.035);
+        });
+      },
+
+      playClick() {
+        const c = getContext();
+        if (!c) return;
+        const now = c.currentTime;
+
+        const osc = c.createOscillator();
+        const gain = c.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(480, now);
+        gain.gain.setValueAtTime(0.08, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+        osc.connect(gain);
+        gain.connect(c.destination);
+        osc.start(now);
+        osc.stop(now + 0.045);
+      }
+    };
+  })();
+
   function applyWordGrading(wordId, isCorrect) {
     const item = words.find((w) => w.id === wordId);
     if (!item) return;
+
+    const today = getTodayISO();
+    const alreadyGradedToday = item.lastGradedDate === today;
+
+    if (alreadyGradedToday) {
+      if (isCorrect) SoundFX.playCorrect();
+      else SoundFX.playWrong();
+      showToast(`Already graded for today (${item.lastGradedResult === 'remembered' ? '✓ Remembered' : '✕ Forgot'}). Daily streak preserved!`, 'info');
+      return;
+    }
+
+    item.lastGradedDate = today;
+    item.lastGradedResult = isCorrect ? 'remembered' : 'forgot';
 
     const wasMastered = !!item.mastered;
 
@@ -887,6 +1109,7 @@
       if (item.streak >= masteryThreshold) {
         item.mastered = true;
         if (!wasMastered) {
+          SoundFX.playMastered();
           const cardEl = document.getElementById(`card-${item.id}`);
           if (cardEl) {
             const rect = cardEl.getBoundingClientRect();
@@ -894,12 +1117,17 @@
           } else {
             triggerConfetti();
           }
+        } else {
+          SoundFX.playCorrect();
         }
+      } else {
+        SoundFX.playCorrect();
       }
     } else {
       item.streak = 0;
       item.mastered = false;
       item.wrongCount = (item.wrongCount || 0) + 1;
+      SoundFX.playWrong();
     }
 
     saveWordsToStorage();
@@ -938,6 +1166,14 @@
      FLASHCARD ACTIVE RECALL & TICK/CROSS GRADING ENGINE
      ========================================================================== */
 
+  let fcSessionStats = {
+    reviewedIds: new Set(),
+    missedIds: new Set(),
+    rememberedCount: 0,
+    forgotCount: 0,
+    masteredNowCount: 0
+  };
+
   function getFlashcardWords() {
     const dateVal = fcPracticeDateSelect ? fcPracticeDateSelect.value : 'all';
     const statusVal = fcPracticeStatusSelect ? fcPracticeStatusSelect.value : 'all';
@@ -974,6 +1210,7 @@
   }
 
   function openFlashcardModal() {
+    SoundFX.playClick();
     if (fcPracticeDateSelect) {
       if (dateFilterState.type === 'single') {
         fcPracticeDateSelect.value = dateFilterState.startDate === getTodayISO() ? 'today' : 'all';
@@ -996,6 +1233,7 @@
   }
 
   function closeFlashcardModal() {
+    SoundFX.playClick();
     if (flashcardModalBackdrop) {
       flashcardModalBackdrop.classList.remove('open');
       flashcardModalBackdrop.setAttribute('aria-hidden', 'true');
@@ -1006,8 +1244,58 @@
     fcFilteredList = getFlashcardWords();
     if (resetIndex || fcCurrentIndex >= fcFilteredList.length) {
       fcCurrentIndex = 0;
+      fcSessionStats = {
+        reviewedIds: new Set(),
+        missedIds: new Set(),
+        rememberedCount: 0,
+        forgotCount: 0,
+        masteredNowCount: 0
+      };
+      if (flashcardDeckStage) flashcardDeckStage.style.display = 'flex';
+      if (flashcardCompletionStage) flashcardCompletionStage.style.display = 'none';
     }
     renderActiveFlashcard();
+  }
+
+  function showFlashcardCompletion() {
+    if (flashcardDeckStage) flashcardDeckStage.style.display = 'none';
+    if (flashcardCompletionStage) {
+      flashcardCompletionStage.style.display = 'flex';
+      
+      if (fcStatTotal) fcStatTotal.textContent = fcSessionStats.reviewedIds.size.toString();
+      if (fcStatRemembered) fcStatRemembered.textContent = fcSessionStats.rememberedCount.toString();
+      if (fcStatForgot) fcStatForgot.textContent = fcSessionStats.forgotCount.toString();
+      if (fcStatMastered) fcStatMastered.textContent = fcSessionStats.masteredNowCount.toString();
+      
+      if (fcReviewMissedBtn) {
+        if (fcSessionStats.missedIds.size > 0) {
+          fcReviewMissedBtn.style.display = 'inline-flex';
+          if (fcMissedCount) fcMissedCount.textContent = fcSessionStats.missedIds.size.toString();
+        } else {
+          fcReviewMissedBtn.style.display = 'none';
+        }
+      }
+    }
+    SoundFX.playMastered();
+    triggerConfetti();
+  }
+
+  function startReviewMissedSession() {
+    if (fcSessionStats.missedIds.size === 0) return;
+    SoundFX.playClick();
+    fcFilteredList = words.filter((w) => fcSessionStats.missedIds.has(w.id));
+    fcCurrentIndex = 0;
+    fcSessionStats = {
+      reviewedIds: new Set(),
+      missedIds: new Set(),
+      rememberedCount: 0,
+      forgotCount: 0,
+      masteredNowCount: 0
+    };
+    if (flashcardDeckStage) flashcardDeckStage.style.display = 'flex';
+    if (flashcardCompletionStage) flashcardCompletionStage.style.display = 'none';
+    renderActiveFlashcard();
+    showToast(`Practicing ${fcFilteredList.length} missed words!`, 'info');
   }
 
   function renderActiveFlashcard() {
@@ -1043,6 +1331,19 @@
       }
     }
     if (fcStreakScoreBadge) fcStreakScoreBadge.textContent = `${streak} ${streak === 1 ? 'time' : 'times'}`;
+
+    // Update Graded Today Pill
+    const today = getTodayISO();
+    if (fcGradedTodayPill) {
+      if (item.lastGradedDate === today) {
+        fcGradedTodayPill.style.display = 'inline-flex';
+        fcGradedTodayPill.textContent = item.lastGradedResult === 'remembered' ? '📅 Graded Today: ✓' : '📅 Graded Today: ✕';
+        fcGradedTodayPill.className = `graded-today-pill ${item.lastGradedResult === 'remembered' ? 'graded-right' : 'graded-wrong'}`;
+        fcGradedTodayPill.title = 'You have already recorded today’s recall for this word. Daily streak is preserved!';
+      } else {
+        fcGradedTodayPill.style.display = 'none';
+      }
+    }
 
     // Update status badge
     if (fcCardStatusPill) {
@@ -1113,17 +1414,20 @@
   function flipFlashcard() {
     isFlipped = !isFlipped;
     if (mainDeckCard) mainDeckCard.classList.toggle('flipped', isFlipped);
+    SoundFX.playFlip();
   }
 
   function nextFlashcard() {
     if (fcFilteredList.length <= 1) return;
     fcCurrentIndex = (fcCurrentIndex + 1) % fcFilteredList.length;
+    SoundFX.playNav();
     renderActiveFlashcard();
   }
 
   function prevFlashcard() {
     if (fcFilteredList.length <= 1) return;
     fcCurrentIndex = (fcCurrentIndex - 1 + fcFilteredList.length) % fcFilteredList.length;
+    SoundFX.playNav();
     renderActiveFlashcard();
   }
 
@@ -1134,6 +1438,7 @@
       [fcFilteredList[i], fcFilteredList[j]] = [fcFilteredList[j], fcFilteredList[i]];
     }
     fcCurrentIndex = 0;
+    SoundFX.playShuffle();
     renderActiveFlashcard();
     showToast('Deck shuffled! 🔀', 'info');
   }
@@ -1143,31 +1448,69 @@
     const item = fcFilteredList[fcCurrentIndex];
     if (!item) return;
 
-    const wasMastered = !!item.mastered;
+    const today = getTodayISO();
+    const alreadyGradedToday = item.lastGradedDate === today;
 
+    // Track in current practice session
+    fcSessionStats.reviewedIds.add(item.id);
     if (isCorrect) {
-      item.streak = (item.streak || 0) + 1;
-      if (item.streak >= masteryThreshold) {
-        item.mastered = true;
-        if (!wasMastered) {
-          triggerConfetti();
-        }
-      }
+      fcSessionStats.rememberedCount++;
     } else {
-      item.streak = 0;
-      item.mastered = false;
-      item.wrongCount = (item.wrongCount || 0) + 1;
+      fcSessionStats.forgotCount++;
+      fcSessionStats.missedIds.add(item.id);
     }
 
-    const orig = words.find((w) => w.id === item.id);
-    if (orig) {
-      orig.streak = item.streak;
-      orig.mastered = item.mastered;
-      orig.wrongCount = item.wrongCount;
+    if (alreadyGradedToday) {
+      if (isCorrect) SoundFX.playCorrect();
+      else SoundFX.playWrong();
+      showToast(`Already graded for today (${item.lastGradedResult === 'remembered' ? '✓ Remembered' : '✕ Forgot'}). Daily streak preserved!`, 'info');
+    } else {
+      item.lastGradedDate = today;
+      item.lastGradedResult = isCorrect ? 'remembered' : 'forgot';
+
+      const wasMastered = !!item.mastered;
+
+      if (isCorrect) {
+        item.streak = (item.streak || 0) + 1;
+        if (item.streak >= masteryThreshold) {
+          item.mastered = true;
+          if (!wasMastered) {
+            fcSessionStats.masteredNowCount++;
+            SoundFX.playMastered();
+            triggerConfetti();
+          } else {
+            SoundFX.playCorrect();
+          }
+        } else {
+          SoundFX.playCorrect();
+        }
+      } else {
+        item.streak = 0;
+        item.mastered = false;
+        item.wrongCount = (item.wrongCount || 0) + 1;
+        SoundFX.playWrong();
+      }
+
+      const orig = words.find((w) => w.id === item.id);
+      if (orig) {
+        orig.streak = item.streak;
+        orig.mastered = item.mastered;
+        orig.wrongCount = item.wrongCount;
+        orig.lastGradedDate = item.lastGradedDate;
+        orig.lastGradedResult = item.lastGradedResult;
+      }
+
+      saveWordsToStorage();
+      renderEntries();
     }
 
-    saveWordsToStorage();
-    renderEntries();
+    // Check if user completed all words in the flashcard deck
+    if (fcSessionStats.reviewedIds.size >= fcFilteredList.length) {
+      setTimeout(() => {
+        showFlashcardCompletion();
+      }, 180);
+      return;
+    }
 
     if (fcFilteredList.length > 1) {
       fcCurrentIndex = (fcCurrentIndex + 1) % fcFilteredList.length;
@@ -2162,6 +2505,7 @@ Return ONLY a valid JSON object matching this schema:
 
     if (fcPracticeModeSelect) {
       fcPracticeModeSelect.addEventListener('change', (e) => {
+        SoundFX.playNav();
         practiceMode = e.target.value;
         renderActiveFlashcard();
       });
@@ -2169,6 +2513,7 @@ Return ONLY a valid JSON object matching this schema:
 
     if (fcPracticeDateSelect) {
       fcPracticeDateSelect.addEventListener('change', () => {
+        SoundFX.playNav();
         const isCustom = fcPracticeDateSelect.value === 'custom';
         if (fcCustomRangeWrap) fcCustomRangeWrap.style.display = isCustom ? 'flex' : 'none';
         if (isCustom && fcCustomStart && fcCustomEnd && !fcCustomStart.value) {
@@ -2179,10 +2524,36 @@ Return ONLY a valid JSON object matching this schema:
       });
     }
 
-    if (fcPracticeStatusSelect) fcPracticeStatusSelect.addEventListener('change', () => refreshFlashcards(true));
-    if (fcApplyCustomRangeBtn) fcApplyCustomRangeBtn.addEventListener('click', () => refreshFlashcards(true));
+    if (fcPracticeStatusSelect) {
+      fcPracticeStatusSelect.addEventListener('change', () => {
+        SoundFX.playNav();
+        refreshFlashcards(true);
+      });
+    }
+    if (fcApplyCustomRangeBtn) {
+      fcApplyCustomRangeBtn.addEventListener('click', () => {
+        SoundFX.playClick();
+        refreshFlashcards(true);
+      });
+    }
     if (fcGradeWrongBtn) fcGradeWrongBtn.addEventListener('click', () => gradeFlashcard(false));
     if (fcGradeRightBtn) fcGradeRightBtn.addEventListener('click', () => gradeFlashcard(true));
+
+    // Flashcard Completion Stage Actions
+    if (fcPracticeAgainBtn) {
+      fcPracticeAgainBtn.addEventListener('click', () => {
+        SoundFX.playClick();
+        refreshFlashcards(true);
+      });
+    }
+
+    if (fcReviewMissedBtn) {
+      fcReviewMissedBtn.addEventListener('click', startReviewMissedSession);
+    }
+
+    if (fcDoneBtn) {
+      fcDoneBtn.addEventListener('click', closeFlashcardModal);
+    }
 
     // Global Keyboard Shortcuts
     window.addEventListener('keydown', (e) => {
@@ -2191,6 +2562,18 @@ Return ONLY a valid JSON object matching this schema:
       if (settingsModalBackdrop && settingsModalBackdrop.classList.contains('open')) return;
 
       if (flashcardModalBackdrop && flashcardModalBackdrop.classList.contains('open')) {
+        // If completion screen is open, allow Enter / Escape
+        if (flashcardCompletionStage && flashcardCompletionStage.style.display !== 'none') {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            refreshFlashcards(true);
+          } else if (e.key === 'Escape') {
+            e.preventDefault();
+            closeFlashcardModal();
+          }
+          return;
+        }
+
         if (e.key === ' ' || e.key === 'Enter') {
           e.preventDefault();
           flipFlashcard();

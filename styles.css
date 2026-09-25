@@ -1613,10 +1613,14 @@ a {
   padding: 3px 10px;
   border-radius: var(--radius-sm);
   cursor: pointer;
+  transition: all var(--transition-fast);
 }
 .deck-nav-btn-subtle:hover {
   background: var(--bg-tertiary);
   color: var(--accent-primary);
+}
+.deck-nav-btn-subtle:active {
+  transform: scale(0.94);
 }
 
 .btn-shuffle {
@@ -1625,9 +1629,172 @@ a {
   color: var(--accent-primary);
   cursor: pointer;
   padding: 4px;
+  transition: transform 0.25s ease, opacity 0.15s ease;
 }
 .btn-shuffle:hover {
   transform: rotate(180deg);
+}
+.btn-shuffle:active {
+  transform: rotate(180deg) scale(0.88);
+}
+
+/* ==========================================================================
+   FLASHCARD COMPLETION STAGE & STATS
+   ========================================================================== */
+
+.flashcard-completion-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16px 12px;
+  width: 100%;
+  animation: fadeInModal 0.3s ease forwards;
+}
+
+.fc-complete-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 28px 20px;
+  width: 100%;
+  max-width: 480px;
+  text-align: center;
+  box-shadow: var(--shadow-md);
+}
+
+.fc-complete-badge {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(16, 185, 129, 0.12);
+  border: 2px solid rgba(16, 185, 129, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 12px;
+  font-size: 2rem;
+}
+
+.fc-complete-title {
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.fc-complete-subtitle {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 20px;
+}
+
+.fc-complete-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.fc-stat-box {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 12px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.fc-stat-number {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.fc-stat-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-top: 4px;
+  white-space: nowrap;
+}
+
+.fc-stat-box.stat-remembered .fc-stat-number { color: var(--accent-emerald); }
+.fc-stat-box.stat-forgot .fc-stat-number { color: var(--accent-rose); }
+.fc-stat-box.stat-mastered .fc-stat-number { color: #f59e0b; }
+
+.fc-complete-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.fc-header-right-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.graded-today-pill {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.graded-today-pill.graded-right {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--accent-emerald-dark);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+.graded-today-pill.graded-wrong {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--accent-rose-dark);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
+[data-theme="dark"] .graded-today-pill.graded-right {
+  background: rgba(16, 185, 129, 0.2);
+  color: var(--accent-emerald);
+}
+[data-theme="dark"] .graded-today-pill.graded-wrong {
+  background: rgba(239, 68, 68, 0.2);
+  color: var(--accent-rose);
+}
+
+.graded-today-tag {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 6px;
+  margin-left: 6px;
+}
+.graded-today-tag.tag-right {
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--accent-emerald-dark);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+.graded-today-tag.tag-wrong {
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--accent-rose-dark);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+[data-theme="dark"] .graded-today-tag.tag-right {
+  background: rgba(16, 185, 129, 0.18);
+  color: var(--accent-emerald);
+}
+[data-theme="dark"] .graded-today-tag.tag-wrong {
+  background: rgba(239, 68, 68, 0.18);
+  color: var(--accent-rose);
 }
 
 /* Form Styles */
