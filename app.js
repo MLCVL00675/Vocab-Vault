@@ -67,7 +67,8 @@
       meaning: 'to accept something reluctantly but without protest; to agree passively.',
       sentence: 'Sara decided to acquiesce in her manager\'s decision to avoid further conflict.',
       notes: 'Synonyms: consent, concur, comply, submit',
-      streak: 1,
+      streak: 0,
+      wrongCount: 0,
       mastered: false,
       createdAt: Date.now() - 10000
     },
@@ -79,7 +80,8 @@
       meaning: 'a state or condition markedly different from the norm.',
       sentence: 'Her angry outburst was an aberration from her usual calm demeanor.',
       notes: 'Synonyms: anomaly, deviation, divergence',
-      streak: 2,
+      streak: 0,
+      wrongCount: 0,
       mastered: false,
       createdAt: Date.now() - 9500
     },
@@ -92,6 +94,7 @@
       sentence: 'The beauty of the morning mist over the lake is notoriously ephemeral.',
       notes: 'Synonyms: momentary, evanescent, fleeting',
       streak: 0,
+      wrongCount: 0,
       mastered: false,
       createdAt: Date.now() - 9000
     },
@@ -103,8 +106,9 @@
       meaning: 'the occurrence and development of events by chance in a happy or beneficial way.',
       sentence: 'Finding my dream internship through a casual coffee conversation was pure serendipity.',
       notes: 'Synonyms: fluke, happy accident, good fortune',
-      streak: 3,
-      mastered: true,
+      streak: 0,
+      wrongCount: 0,
+      mastered: false,
       createdAt: Date.now() - 8000
     },
     {
@@ -116,6 +120,7 @@
       sentence: 'Smartphones have become ubiquitous across all age groups in modern society.',
       notes: 'Synonyms: omnipresent, pervasive, universal',
       streak: 0,
+      wrongCount: 0,
       mastered: false,
       createdAt: Date.now() - 90000
     },
@@ -127,8 +132,9 @@
       meaning: 'able to withstand or recover quickly from difficult conditions or hardship.',
       sentence: 'The local community proved remarkably resilient following the unexpected storm.',
       notes: 'Synonyms: robust, tough, hardy',
-      streak: 3,
-      mastered: true,
+      streak: 0,
+      wrongCount: 0,
+      mastered: false,
       createdAt: Date.now() - 85000
     },
     {
@@ -139,7 +145,8 @@
       meaning: 'fluent, persuasive, or clearly expressing powerful ideas in speech or writing.',
       sentence: 'Her eloquent presentation on renewable energy received a standing ovation.',
       notes: 'Synonyms: articulate, expressive, persuasive',
-      streak: 1,
+      streak: 0,
+      wrongCount: 0,
       mastered: false,
       createdAt: Date.now() - 250000
     }
@@ -285,6 +292,7 @@
   const exportDataBtn = document.getElementById('exportDataBtn');
   const importDataBtn = document.getElementById('importDataBtn');
   const importFileInput = document.getElementById('importFileInput');
+  const resetStreaksBtn = document.getElementById('resetStreaksBtn');
   const loadSampleDataBtn = document.getElementById('loadSampleDataBtn');
   const clearAllDataBtn = document.getElementById('clearAllDataBtn');
   const toastContainer = document.getElementById('toastContainer');
@@ -311,6 +319,7 @@
         if (Array.isArray(parsed) && parsed.length > 0) {
           const seen = new Set();
           const deduplicated = [];
+          const resetMigrationDone = localStorage.getItem('vocabvault_reset_streaks_done_v1') === 'true';
 
           parsed.forEach((item) => {
             const wordKey = (item.word || '').trim().toLowerCase();
@@ -324,10 +333,17 @@
               meaning: item.meaning || '',
               sentence: item.sentence || '',
               notes: item.notes || '',
-              streak: typeof item.streak === 'number' ? item.streak : (item.mastered ? masteryThreshold : 0),
-              wrongCount: typeof item.wrongCount === 'number' ? item.wrongCount : 0
+              streak: resetMigrationDone ? (typeof item.streak === 'number' ? item.streak : 0) : 0,
+              wrongCount: resetMigrationDone ? (typeof item.wrongCount === 'number' ? item.wrongCount : 0) : 0,
+              mastered: resetMigrationDone ? !!item.mastered : false,
+              lastGradedDate: resetMigrationDone ? item.lastGradedDate : undefined,
+              lastGradedResult: resetMigrationDone ? item.lastGradedResult : undefined
             });
           });
+
+          if (!resetMigrationDone) {
+            localStorage.setItem('vocabvault_reset_streaks_done_v1', 'true');
+          }
 
           words = deduplicated;
           updateStatsHeader();
@@ -339,6 +355,7 @@
       console.error('Failed to parse localStorage data:', err);
     }
     words = [...DEFAULT_SAMPLE_WORDS];
+    localStorage.setItem('vocabvault_reset_streaks_done_v1', 'true');
     saveWordsToStorage();
   }
 
@@ -627,6 +644,13 @@
     });
   }
 
+  function getGradedTodayIconHtml(item) {
+    if (item.lastGradedDate !== getTodayISO()) return '';
+    const isRemembered = item.lastGradedResult === 'remembered';
+    const titleText = isRemembered ? 'Reviewed today: Remembered (✓)' : 'Reviewed today: Forgot (✕)';
+    return `<span class="graded-icon-badge ${isRemembered ? 'is-remembered' : 'is-forgot'}" title="${titleText}" aria-label="${titleText}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/>${isRemembered ? '<polyline points="9 16 11 18 15 13"/>' : '<line x1="10" y1="14" x2="14" y2="18"/><line x1="14" y1="14" x2="10" y2="18"/>'}</svg></span>`;
+  }
+
   function createWordCardElement(item) {
     const card = document.createElement('div');
     const isUnhidden = revealedCardIds.has(item.id);
@@ -726,7 +750,7 @@
           <div class="streak-pips" title="Mastery Streak: ${streak} ${streak === 1 ? 'time' : 'times'}">${pipsHtml}</div>
           <span class="streak-count-text ${isMastered ? 'mastered' : ''}">${streak} ${streak === 1 ? 'time' : 'times'}</span>
           <span class="wrong-count-text ${wrongCount > 0 ? '' : 'hidden-zero'}" title="Forgotten: ${wrongCount} ${wrongCount === 1 ? 'time' : 'times'}">✕ ${wrongCount} ${wrongCount === 1 ? 'time' : 'times'}</span>
-          ${item.lastGradedDate === getTodayISO() ? `<span class="graded-today-tag ${item.lastGradedResult === 'remembered' ? 'tag-right' : 'tag-wrong'}" title="Already graded today (${item.lastGradedResult === 'remembered' ? '✓ Remembered' : '✕ Forgot'})">📅 Graded today ${item.lastGradedResult === 'remembered' ? '✓' : '✕'}</span>` : ''}
+          ${getGradedTodayIconHtml(item)}
         </div>
         
         <div class="card-recall-actions">
@@ -875,20 +899,34 @@
       wrongCountText.classList.toggle('hidden-zero', wrongCount === 0);
     }
 
-    // In-place update of graded today tag
-    let tagEl = cardEl.querySelector('.graded-today-tag');
+    // In-place update of graded today icon badge
+    let iconBadge = cardEl.querySelector('.graded-icon-badge, .graded-today-tag');
     const isGradedToday = item.lastGradedDate === getTodayISO();
     if (isGradedToday) {
-      if (!tagEl) {
-        tagEl = document.createElement('span');
+      const isRemembered = item.lastGradedResult === 'remembered';
+      const titleText = isRemembered ? 'Reviewed today: Remembered (✓)' : 'Reviewed today: Forgot (✕)';
+      if (!iconBadge) {
         const metaWrap = cardEl.querySelector('.streak-meta-wrap');
-        if (metaWrap) metaWrap.appendChild(tagEl);
+        if (metaWrap) {
+          const temp = document.createElement('div');
+          temp.innerHTML = getGradedTodayIconHtml(item);
+          if (temp.firstElementChild) metaWrap.appendChild(temp.firstElementChild);
+        }
+      } else {
+        iconBadge.className = `graded-icon-badge ${isRemembered ? 'is-remembered' : 'is-forgot'}`;
+        iconBadge.title = titleText;
+        iconBadge.setAttribute('aria-label', titleText);
+        iconBadge.innerHTML = `
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/>
+            ${isRemembered 
+              ? '<polyline points="9 16 11 18 15 13"/>' 
+              : '<line x1="10" y1="14" x2="14" y2="18"/><line x1="14" y1="14" x2="10" y2="18"/>'}
+          </svg>
+        `;
       }
-      tagEl.className = `graded-today-tag ${item.lastGradedResult === 'remembered' ? 'tag-right' : 'tag-wrong'}`;
-      tagEl.title = `Already graded today (${item.lastGradedResult === 'remembered' ? '✓ Remembered' : '✕ Forgot'})`;
-      tagEl.textContent = `📅 Graded today ${item.lastGradedResult === 'remembered' ? '✓' : '✕'}`;
-    } else if (tagEl) {
-      tagEl.remove();
+    } else if (iconBadge) {
+      iconBadge.remove();
     }
 
     // If an exclusive status filter is active, smoothly animate out if category changed
@@ -1332,14 +1370,24 @@
     }
     if (fcStreakScoreBadge) fcStreakScoreBadge.textContent = `${streak} ${streak === 1 ? 'time' : 'times'}`;
 
-    // Update Graded Today Pill
+    // Update Graded Today Icon Badge
     const today = getTodayISO();
     if (fcGradedTodayPill) {
       if (item.lastGradedDate === today) {
+        const isRemembered = item.lastGradedResult === 'remembered';
+        const titleText = isRemembered ? 'Reviewed today: Remembered (✓)' : 'Reviewed today: Forgot (✕)';
         fcGradedTodayPill.style.display = 'inline-flex';
-        fcGradedTodayPill.textContent = item.lastGradedResult === 'remembered' ? '📅 Graded Today: ✓' : '📅 Graded Today: ✕';
-        fcGradedTodayPill.className = `graded-today-pill ${item.lastGradedResult === 'remembered' ? 'graded-right' : 'graded-wrong'}`;
-        fcGradedTodayPill.title = 'You have already recorded today’s recall for this word. Daily streak is preserved!';
+        fcGradedTodayPill.className = `graded-icon-badge ${isRemembered ? 'is-remembered' : 'is-forgot'}`;
+        fcGradedTodayPill.title = titleText;
+        fcGradedTodayPill.setAttribute('aria-label', titleText);
+        fcGradedTodayPill.innerHTML = `
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/>
+            ${isRemembered 
+              ? '<polyline points="9 16 11 18 15 13"/>' 
+              : '<line x1="10" y1="14" x2="14" y2="18"/><line x1="14" y1="14" x2="10" y2="18"/>'}
+          </svg>
+        `;
       } else {
         fcGradedTodayPill.style.display = 'none';
       }
@@ -2251,6 +2299,29 @@ Return ONLY a valid JSON object matching this schema:
     });
   }
 
+  function resetAllStreaks() {
+    showConfirmModal({
+      title: 'Reset All Word Streaks?',
+      message: 'This will reset mastery streaks, mistake counts (✕), and daily grading status for ALL words back to 0. Word definitions and notes will remain intact.',
+      actionText: 'Reset Streaks',
+      type: 'danger',
+      onConfirm: () => {
+        words.forEach((w) => {
+          w.streak = 0;
+          w.wrongCount = 0;
+          delete w.lastGradedDate;
+          delete w.lastGradedResult;
+          w.mastered = false;
+        });
+        saveWordsToStorage();
+        renderCalendar();
+        renderEntries();
+        closeSettingsModal();
+        showToast('All word streaks and recall records reset to 0.', 'success');
+      }
+    });
+  }
+
   function clearAllData() {
     showConfirmModal({
       title: 'Clear All Words?',
@@ -2676,6 +2747,7 @@ Return ONLY a valid JSON object matching this schema:
     if (exportDataBtn) exportDataBtn.addEventListener('click', exportData);
     if (importDataBtn && importFileInput) importDataBtn.addEventListener('click', () => importFileInput.click());
     if (importFileInput) importFileInput.addEventListener('change', handleImportFile);
+    if (resetStreaksBtn) resetStreaksBtn.addEventListener('click', resetAllStreaks);
     if (loadSampleDataBtn) loadSampleDataBtn.addEventListener('click', loadSampleData);
     if (clearAllDataBtn) clearAllDataBtn.addEventListener('click', clearAllData);
 
